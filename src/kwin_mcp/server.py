@@ -2,10 +2,14 @@
 
 Thin wrapper that registers MCP tools with parameter descriptions,
 delegating all logic to AutomationEngine in core.py.
+
+Supports ``--default-live-session`` flag to switch the default session mode
+from virtual (isolated) to live (real desktop).
 """
 
 from __future__ import annotations
 
+import sys
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -15,6 +19,9 @@ from kwin_mcp.core import AutomationEngine
 
 mcp = FastMCP("kwin-mcp")
 _engine = AutomationEngine()
+
+# Detect --default-live-session flag early (before MCP framework consumes args)
+_live_session_mode = "--default-live-session" in sys.argv
 
 
 # ── Session management ──────────────────────────────────────────────────
@@ -84,10 +91,46 @@ def session_start(
 
 
 @mcp.tool()
-def session_stop() -> str:
-    """Stop the isolated KWin session and clean up.
+def session_connect(
+    dbus_address: Annotated[
+        str,
+        Field(
+            description="D-Bus session bus address. Leave empty to use the current desktop "
+            "session ($DBUS_SESSION_BUS_ADDRESS)."
+        ),
+    ] = "",
+    wayland_display: Annotated[
+        str,
+        Field(
+            description="Wayland display socket name. Leave empty to use the current desktop "
+            "($WAYLAND_DISPLAY)."
+        ),
+    ] = "",
+    keep_screenshots: Annotated[
+        bool,
+        Field(description="Keep screenshot files after session_stop instead of deleting them."),
+    ] = False,
+) -> str:
+    """Connect to an existing KWin session (e.g. the real desktop or a container).
 
-    Terminates KWin, all launched app processes, and the D-Bus session.
+    Only use when explicitly asked to interact with a real/existing desktop session.
+    For normal GUI automation, use session_start instead (creates an isolated virtual session).
+    This connects to a KWin compositor that is already running. Clipboard is always available.
+    Input injection uses KWin EIS when possible, with ydotool as fallback.
+    """
+    return _engine.session_connect(
+        dbus_address=dbus_address,
+        wayland_display=wayland_display,
+        keep_screenshots=keep_screenshots,
+    )
+
+
+@mcp.tool()
+def session_stop() -> str:
+    """Stop the current session and clean up.
+
+    For virtual sessions: terminates KWin, all launched apps, and the D-Bus session.
+    For live sessions: disconnects without killing KWin or pre-existing apps.
     Cleans up temporary files and clipboard processes. Safe to call when
     no session is running (returns "No session running.").
     """
@@ -766,8 +809,38 @@ def wayland_info(
     return _engine.wayland_info(filter_protocol=filter_protocol)
 
 
+def _apply_live_session_mode() -> None:
+    """Swap tool descriptions when --default-live-session is active."""
+    if not _live_session_mode:
+        return
+
+    # Update session_start to indicate it's NOT the default
+    tools = mcp._tool_manager._tools
+    if "session_start" in tools:
+        tools["session_start"].description = (
+            "Start an isolated virtual KWin Wayland session. "
+            "Only use when explicitly asked for an isolated/virtual session. "
+            "The default session tool is session_connect (live session mode is active)."
+        )
+    if "session_connect" in tools:
+        tools["session_connect"].description = (
+            "Connect to an existing KWin session (e.g. the real desktop or a container). "
+            "This is the default session tool. Connects to a KWin compositor that is already "
+            "running. Clipboard is always available. Input injection uses KWin EIS when "
+            "possible, with ydotool as fallback."
+        )
+
+
 def main() -> None:
-    """Run the MCP server."""
+    """Run the MCP server.
+
+    Supports ``--default-live-session`` flag to make session_connect the default
+    session tool instead of session_start.
+    """
+    # Remove our custom flag before MCP framework parses args
+    if "--default-live-session" in sys.argv:
+        sys.argv.remove("--default-live-session")
+    _apply_live_session_mode()
     mcp.run()
 
 

@@ -12,11 +12,13 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 from kwin_mcp.input import InputBackend, MouseButton
 from kwin_mcp.screenshot import capture_frame_burst, capture_screenshot_to_file
-from kwin_mcp.session import Session, SessionConfig
+from kwin_mcp.session import LiveSession, Session, SessionConfig
 
 # Install hints for external binaries
 _INSTALL_HINTS: dict[str, str] = {
@@ -54,22 +56,23 @@ class AutomationEngine:
     """
 
     def __init__(self) -> None:
-        self._session: Session | None = None
+        self._session: Session | LiveSession | None = None
         self._input: InputBackend | None = None
         self._clipboard_enabled: bool = False
         self._wl_copy_proc: subprocess.Popen[bytes] | None = None
+        self._keep_screenshots: bool = False
 
     # ── Private helpers ───────────────────────────────────────────────────
 
-    def _get_session(self) -> Session:
+    def _get_session(self) -> Session | LiveSession:
         if self._session is None or not self._session.is_running:
-            msg = "No active session. Call session_start first."
+            msg = "No active session. Call session_start or session_connect first."
             raise RuntimeError(msg)
         return self._session
 
     def _get_input(self) -> InputBackend:
         if self._input is None:
-            msg = "No input backend. Call session_start first."
+            msg = "No input backend. Call session_start or session_connect first."
             raise RuntimeError(msg)
         return self._input
 
@@ -213,8 +216,71 @@ class AutomationEngine:
 
         return result
 
+    def session_connect(
+        self,
+        dbus_address: str = "",
+        wayland_display: str = "",
+        keep_screenshots: bool = False,
+    ) -> str:
+        """Connect to an existing KWin session (e.g. the real desktop)."""
+        if self._session is not None and self._session.is_running:
+            return "Session already running. Call session_stop first."
+
+        dbus_addr = dbus_address or os.environ.get("DBUS_SESSION_BUS_ADDRESS", "")
+        wayland_disp = wayland_display or os.environ.get("WAYLAND_DISPLAY", "")
+
+        if not dbus_addr:
+            return (
+                "No D-Bus address available. Provide dbus_address parameter "
+                "or ensure $DBUS_SESSION_BUS_ADDRESS is set."
+            )
+        if not wayland_disp:
+            return (
+                "No Wayland display available. Provide wayland_display parameter "
+                "or ensure $WAYLAND_DISPLAY is set."
+            )
+
+        # Validate KWin is reachable on the given D-Bus
+        import dbus as dbus_module
+        import dbus.bus
+
+        try:
+            bus = dbus.bus.BusConnection(dbus_addr)
+            bus.get_object("org.kde.KWin", "/org/kde/KWin")
+        except dbus_module.DBusException as exc:
+            return f"Cannot reach KWin on D-Bus ({dbus_addr}): {exc}"
+
+        screenshot_dir = Path(tempfile.mkdtemp(prefix="kwin-mcp-screenshots-"))
+
+        session = LiveSession(dbus_addr, wayland_disp, screenshot_dir)
+        session._keep_screenshots = keep_screenshots
+        self._session = session
+        self._keep_screenshots = keep_screenshots
+
+        # Clipboard is always available on live sessions
+        self._clipboard_enabled = True
+
+        result = f"Connected to live KWin session. D-Bus: {dbus_addr}, Wayland: {wayland_disp}"
+
+        # Set up input backend — EIS first, ydotool fallback
+        time.sleep(0.3)
+        try:
+            self._input = InputBackend(dbus_addr)
+            result += "\nInput backend: KWin EIS"
+        except RuntimeError:
+            self._input = None
+            if shutil.which("ydotool"):
+                result += "\nInput backend: ydotool (EIS unavailable)"
+            else:
+                result += (
+                    "\nNo input backend available (EIS connection failed and ydotool not found). "
+                    "Screenshot and accessibility tools still work."
+                )
+
+        return result
+
     def session_stop(self) -> str:
-        """Stop the isolated KWin session and clean up."""
+        """Stop the current session and clean up."""
         if self._session is None:
             return "No session running."
 
@@ -230,10 +296,17 @@ class AutomationEngine:
 
         if self._input is not None:
             self._input.close()
-        self._session.stop()
+
+        is_live = isinstance(self._session, LiveSession)
+        if is_live:
+            self._session.stop(keep_screenshots=self._keep_screenshots)
+        else:
+            self._session.stop()
         self._session = None
         self._input = None
-        return "Session stopped."
+        self._keep_screenshots = False
+
+        return "Disconnected from live session." if is_live else "Session stopped."
 
     # ── Screenshot / Accessibility ────────────────────────────────────────
 
@@ -525,7 +598,10 @@ class AutomationEngine:
     def clipboard_get(self) -> str:
         """Read the current clipboard content in the isolated session."""
         if not self._clipboard_enabled:
-            return "Clipboard not enabled. Pass enable_clipboard=True to session_start."
+            return (
+                "Clipboard not enabled. Pass enable_clipboard=True to session_start, "
+                "or use session_connect (clipboard is always enabled for live sessions)."
+            )
 
         env = self._session_env()
         try:
@@ -544,7 +620,10 @@ class AutomationEngine:
     def clipboard_set(self, text: str) -> str:
         """Set the clipboard content in the isolated session."""
         if not self._clipboard_enabled:
-            return "Clipboard not enabled. Pass enable_clipboard=True to session_start."
+            return (
+                "Clipboard not enabled. Pass enable_clipboard=True to session_start, "
+                "or use session_connect (clipboard is always enabled for live sessions)."
+            )
 
         # Terminate previous wl-copy process (replaced by new content)
         if self._wl_copy_proc is not None:

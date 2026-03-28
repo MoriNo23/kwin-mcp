@@ -118,10 +118,22 @@ class KwinMcpShell(cmd.Cmd):
     intro = "kwin-mcp CLI. Type 'help' for commands, 'quit' to exit."
     prompt = "kwin-mcp> "
 
-    def __init__(self, engine: AutomationEngine | None = None) -> None:
+    def __init__(
+        self,
+        engine: AutomationEngine | None = None,
+        *,
+        live_session_mode: bool = False,
+    ) -> None:
         super().__init__()
         self.engine = engine or AutomationEngine()
+        self.live_session_mode = live_session_mode
         self._commands: dict[str, Callable[..., Any]] = self._discover_commands()
+
+        if live_session_mode:
+            self.intro = (
+                "kwin-mcp CLI (live session mode). Type 'help' for commands, 'quit' to exit."
+            )
+            self.prompt = "kwin-mcp[live]> "
 
         # Suppress prompt in pipe mode
         if not sys.stdin.isatty():
@@ -225,8 +237,23 @@ class KwinMcpShell(cmd.Cmd):
 
 
 def main() -> None:
-    """Entry point for the kwin-mcp-cli command."""
-    shell = KwinMcpShell()
+    """Entry point for the kwin-mcp-cli command.
+
+    Supports ``--default-live-session`` flag to switch the default session mode
+    from virtual to live. In live mode, the prompt changes and session_connect
+    becomes the recommended session tool.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="kwin-mcp interactive CLI")
+    parser.add_argument(
+        "--default-live-session",
+        action="store_true",
+        help="Use live (real desktop) session as the default instead of virtual/isolated.",
+    )
+    args = parser.parse_args()
+
+    shell = KwinMcpShell(live_session_mode=args.default_live_session)
     try:
         shell.cmdloop()
     except KeyboardInterrupt:
