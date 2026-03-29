@@ -49,6 +49,16 @@ cd kwin-mcp
 uv sync
 ```
 
+### Documentation Consistency Check
+
+The project includes a docs-seo consistency checker (`scripts/check_docs_seo.py`) that validates SEO keywords and positioning terms across documentation files. It runs automatically in CI on pull requests and can be invoked locally:
+
+```bash
+python3 scripts/check_docs_seo.py
+```
+
+In Claude Code sessions, use the `/check-docs-seo` skill or the `@docs-seo` agent to evaluate and update documentation after code changes.
+
 ## Code Style
 
 This project uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting, and [ty](https://docs.astral.sh/ty/) for type checking.
@@ -75,7 +85,35 @@ After modifying kwin-mcp code, verify your changes via the interactive CLI:
 uv run python -m kwin_mcp.cli
 ```
 
-The CLI provides the same functionality as the MCP server and allows you to test tools interactively. Use `session_start` to launch an isolated KWin session, then test your changes.
+The CLI provides the same functionality as the MCP server and allows you to test tools interactively.
+
+### Virtual Session Testing (Isolated)
+
+Use `session_start` to launch an isolated KWin Wayland session — safe for automated tests and CI since it does not touch your real desktop:
+
+```
+> session_start
+```
+
+### Live Session Testing
+
+Use `session_connect` to attach to your existing KDE Plasma desktop session. This is useful when testing features that require a real desktop environment (e.g., clipboard integration, real application interaction):
+
+```
+> session_connect
+```
+
+`session_connect` defaults to the current session via `$DBUS_SESSION_BUS_ADDRESS` and `$WAYLAND_DISPLAY`. You can also pass explicit values:
+
+```
+> session_connect dbus_address=unix:path=/run/user/1000/bus wayland_display=wayland-1
+```
+
+You can also start the CLI in live-session-default mode with `--default-live-session`:
+
+```bash
+uv run python -m kwin_mcp.cli --default-live-session
+```
 
 > **Note**: Do not test via the MCP server if it was started before your code changes -- it will still be running the old code. Always use the CLI for verification.
 
@@ -86,7 +124,7 @@ src/kwin_mcp/
 ├── core.py            # AutomationEngine — MCP-independent automation logic
 ├── server.py          # MCP server (thin wrappers around AutomationEngine)
 ├── cli.py             # Interactive REPL + pipe mode
-├── session.py         # Isolated KWin Wayland session management
+├── session.py         # KWin session management (isolated virtual + live desktop)
 ├── screenshot.py      # Screenshot capture via KWin ScreenShot2 D-Bus
 ├── accessibility.py   # AT-SPI2 accessibility tree inspection
 └── input.py           # Input injection via KWin EIS D-Bus + libei
