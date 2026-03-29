@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-29
+
 ### Added
 
 - `session_connect` tool for attaching to an existing KWin session (real desktop or container) instead of creating an isolated virtual one. Defaults to `$DBUS_SESSION_BUS_ADDRESS` and `$WAYLAND_DISPLAY` from the environment. Clipboard is always enabled for live sessions.
@@ -119,7 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keyboard input: text typing and key combinations via KWin EIS
 - FastMCP-based MCP server with stdio transport
 
-[Unreleased]: https://github.com/isac322/kwin-mcp/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/isac322/kwin-mcp/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/isac322/kwin-mcp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/isac322/kwin-mcp/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/isac322/kwin-mcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/isac322/kwin-mcp/compare/v0.4.2...v0.5.0
