@@ -156,6 +156,7 @@ class AutomationEngine:
             dbus_address=info.dbus_address,
             output_dir=info.screenshot_dir,
             delays_ms=screenshot_after_ms,
+            wayland_socket=info.wayland_socket,
         )
 
         lines = [action_result, f"Captured {len(frames)} frames:"]
@@ -298,7 +299,7 @@ class AutomationEngine:
             self._input.close()
 
         is_live = isinstance(self._session, LiveSession)
-        if is_live:
+        if isinstance(self._session, LiveSession):
             self._session.stop(keep_screenshots=self._keep_screenshots)
         else:
             self._session.stop()
