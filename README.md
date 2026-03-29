@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/isac322/kwin-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/isac322/kwin-mcp/actions/workflows/ci.yml)
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents (Claude Code, Cursor, and other MCP clients) to launch, interact with, and observe any Wayland application in a fully isolated virtual KWin session -- without affecting the user's desktop. With 29 MCP tools covering mouse, keyboard, touch, clipboard, accessibility tree inspection, screenshot capture, and window management, kwin-mcp provides everything needed for end-to-end GUI testing and desktop automation on Linux.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents (Claude Code, Cursor, and other MCP clients) to launch, interact with, and observe any Wayland application in a fully isolated virtual KWin session -- without affecting the user's desktop. It can also connect to a live KWin session (real desktop or container) for collaborative workflows. With 30 MCP tools covering mouse, keyboard, touch, clipboard, accessibility tree inspection, screenshot capture, and window management, kwin-mcp provides everything needed for end-to-end GUI testing and desktop automation on Linux.
 
 ## Table of Contents
 
@@ -27,6 +27,7 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 ## Why kwin-mcp?
 
 - **Isolated sessions** -- Each session runs in its own `dbus-run-session` + `kwin_wayland --virtual` sandbox. Your host desktop is never affected.
+- **Live session support** -- Connect to a real KDE Plasma desktop or a KWin instance inside a container (e.g. `systemd-nspawn`) for collaborative "share my screen" workflows.
 - **No screenshots required for interaction** -- The AT-SPI2 accessibility tree gives the AI agent structured widget data (roles, names, coordinates, states, available actions), so it can interact with UI elements without relying solely on vision.
 - **Zero authorization prompts** -- Uses KWin's private EIS (Emulated Input Server) D-Bus interface directly, bypassing the XDG RemoteDesktop portal. No user confirmation dialogs.
 - **Works with any Wayland app** -- Anything that runs on KDE Plasma 6 Wayland works: Qt, GTK, Electron, and more. Input is injected via the standard `libei` protocol.
@@ -40,7 +41,11 @@ Run end-to-end GUI tests for KDE/Qt/GTK applications in headless isolated sessio
 
 ### AI-Driven Desktop Automation
 
-Let AI agents like Claude Code autonomously operate desktop applications. The agent reads the accessibility tree to understand the UI, performs actions through 29 MCP tools, and observes the results via screenshots -- creating a complete feedback loop for any Wayland application.
+Let AI agents like Claude Code autonomously operate desktop applications. The agent reads the accessibility tree to understand the UI, performs actions through 30 MCP tools, and observes the results via screenshots -- creating a complete feedback loop for any Wayland application.
+
+### Live Desktop Collaboration
+
+Connect to your real desktop session and let Claude observe and interact with what you see. Use `session_connect` or pass `--default-live-session` to make live mode the default. Also supports attaching to KWin running inside containers (e.g. `systemd-nspawn`) for isolated agent desktops.
 
 ### Headless GUI Testing in CI/CD
 
@@ -140,16 +145,21 @@ python -m kwin_mcp
 
 # Interactive CLI (REPL for rapid testing)
 kwin-mcp-cli
+
+# Live session mode (default to real desktop instead of virtual)
+kwin-mcp --default-live-session
+kwin-mcp-cli --default-live-session
 ```
 
 ## Available Tools
 
-### Session Management (2 tools)
+### Session Management (3 tools)
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
 | `session_start` | `app_command?` `str`, `screen_width?` `int` (1920), `screen_height?` `int` (1080), `enable_clipboard?` `bool` (false), `keep_screenshots?` `bool` (false), `isolate_home?` `bool` (false), `keep_home?` `bool` (false), `env?` `dict` | Start an isolated KWin Wayland session, optionally launching an app. Set `enable_clipboard=true` to enable clipboard tools (requires `wl-clipboard`). Set `keep_screenshots=true` to preserve screenshot files after `session_stop`. Set `isolate_home=true` to create a temporary HOME with isolated XDG directories (config, data, cache, state), preventing apps from reading/writing host user settings. Set `keep_home=true` to preserve the isolated home directory after `session_stop`. Pass extra environment variables via `env`. |
-| `session_stop` | _(none)_ | Stop the session and clean up all processes |
+| `session_connect` | `dbus_address?` `str`, `wayland_display?` `str`, `keep_screenshots?` `bool` (false) | Connect to an existing KWin session (real desktop or container). Defaults to `$DBUS_SESSION_BUS_ADDRESS` and `$WAYLAND_DISPLAY`. Clipboard is always enabled. `session_stop` only disconnects without killing KWin or pre-existing apps. |
+| `session_stop` | _(none)_ | Stop the session and clean up. For virtual sessions: terminates KWin and all apps. For live sessions: disconnects without killing KWin or pre-existing apps. |
 
 ### Observation (3 tools)
 
@@ -227,14 +237,16 @@ Claude Code / AI Agent
   |
   |  MCP (stdio)
   v
-kwin-mcp server  (29 tools)       kwin-mcp-cli (interactive REPL)
+kwin-mcp server  (30 tools)       kwin-mcp-cli (interactive REPL)
   |                                  |
   +--- both delegate to AutomationEngine (core.py) ---+
   |
-  |-- session_start / stop -----> dbus-run-session
+  |-- session_start (virtual) ---> dbus-run-session
   |                                 |-- at-spi-bus-launcher
   |                                 +-- kwin_wayland --virtual
   |                                       +-- [your app]
+  |
+  |-- session_connect (live) ----> existing KWin (real desktop / container)
   |
   |-- screenshot ---------------> KWin ScreenShot2 D-Bus (spectacle fallback)
   |

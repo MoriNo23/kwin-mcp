@@ -113,29 +113,53 @@ def capture_frame_burst(
     delays_ms: list[int],
     *,
     include_cursor: bool = False,
+    wayland_socket: str = "",
 ) -> list[Path]:
     """Capture multiple screenshots at specified delays after an action.
 
     Takes screenshots at each delay (in milliseconds) using the fast
-    D-Bus capture method. Delays are relative to when this function
-    is called.
-
-    Optimized to reuse a single D-Bus connection and defer PNG encoding
-    until after all raw frames are captured, ensuring accurate timing.
+    D-Bus capture method. Falls back to spectacle CLI if D-Bus authorization
+    fails (e.g. in live sessions without KWIN_SCREENSHOT_NO_PERMISSION_CHECKS).
 
     Args:
-        dbus_address: D-Bus session bus address for the isolated session.
+        dbus_address: D-Bus session bus address for the session.
         output_dir: Directory to save the frame PNG files.
         delays_ms: List of delays in milliseconds (e.g., [0, 50, 100, 200, 500]).
         include_cursor: Whether to include the mouse cursor.
+        wayland_socket: Wayland socket name (needed for spectacle fallback).
 
     Returns:
         List of paths to the captured PNG files, ordered by delay.
     """
-    from PIL import Image
-
     output_dir.mkdir(parents=True, exist_ok=True)
     sorted_delays = sorted(delays_ms)
+
+    # Try fast D-Bus capture first
+    try:
+        return _capture_frame_burst_dbus(
+            dbus_address, output_dir, sorted_delays, include_cursor=include_cursor
+        )
+    except dbus.DBusException:
+        # D-Bus authorization failed (e.g. live session without permission bypass).
+        # Fall back to spectacle CLI (slower but always authorized).
+        return _capture_frame_burst_spectacle(
+            dbus_address,
+            wayland_socket,
+            output_dir,
+            sorted_delays,
+            include_cursor=include_cursor,
+        )
+
+
+def _capture_frame_burst_dbus(
+    dbus_address: str,
+    output_dir: Path,
+    sorted_delays: list[int],
+    *,
+    include_cursor: bool = False,
+) -> list[Path]:
+    """Capture frames using fast KWin ScreenShot2 D-Bus interface."""
+    from PIL import Image
 
     # Reuse a single D-Bus connection for all captures
     bus = dbus.bus.BusConnection(dbus_address)
@@ -188,6 +212,34 @@ def capture_frame_burst(
         img.save(frame_path, "PNG")
         frame_paths.append(frame_path)
 
+    return frame_paths
+
+
+def _capture_frame_burst_spectacle(
+    dbus_address: str,
+    wayland_socket: str,
+    output_dir: Path,
+    sorted_delays: list[int],
+    *,
+    include_cursor: bool = False,
+) -> list[Path]:
+    """Capture frames using spectacle CLI (slower but always authorized)."""
+    frame_paths: list[Path] = []
+    start = time.monotonic()
+    for i, delay_ms in enumerate(sorted_delays):
+        target_time = start + delay_ms / 1000.0
+        now = time.monotonic()
+        if now < target_time:
+            time.sleep(target_time - now)
+
+        frame_path = output_dir / f"frame_{i:03d}_{delay_ms}ms.png"
+        _capture_via_spectacle(
+            dbus_address,
+            wayland_socket,
+            output_path=frame_path,
+            include_cursor=include_cursor,
+        )
+        frame_paths.append(frame_path)
     return frame_paths
 
 

@@ -1,8 +1,8 @@
-"""Isolated KWin Wayland session management.
+"""KWin Wayland session management.
 
-Manages the lifecycle of an isolated KWin Wayland session using
-dbus-run-session + kwin_wayland --virtual for complete isolation
-from the host desktop.
+Manages the lifecycle of KWin Wayland sessions:
+- Virtual sessions: isolated via dbus-run-session + kwin_wayland --virtual
+- Live sessions: connecting to an existing KWin compositor (real desktop or container)
 """
 
 from __future__ import annotations
@@ -15,7 +15,15 @@ import subprocess
 import tempfile
 import time
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
+
+
+class SessionType(Enum):
+    """Type of KWin session."""
+
+    VIRTUAL = "virtual"
+    LIVE = "live"
 
 
 @dataclass
@@ -44,7 +52,7 @@ class AppInfo:
 
 @dataclass
 class SessionInfo:
-    """Runtime information about a running isolated session."""
+    """Runtime information about a running session."""
 
     dbus_address: str
     wayland_socket: str
@@ -54,6 +62,7 @@ class SessionInfo:
     app_pid: int | None = None
     wrapper_pid: int | None = None
     apps: dict[int, AppInfo] = field(default_factory=dict)
+    session_type: SessionType = SessionType.VIRTUAL
 
 
 class Session:
@@ -415,3 +424,122 @@ wait $KWIN_PID
 
     def __exit__(self, *_: object) -> None:
         self.stop()
+
+
+class LiveSession:
+    """Connection to an existing (non-virtual) KWin session.
+
+    Attaches to a KWin compositor that is already running, such as
+    the user's real desktop or a KWin instance inside a container.
+    Does NOT manage the compositor lifecycle — stop() only disconnects.
+    """
+
+    def __init__(
+        self,
+        dbus_address: str,
+        wayland_socket: str,
+        screenshot_dir: Path,
+    ) -> None:
+        self._info = SessionInfo(
+            dbus_address=dbus_address,
+            wayland_socket=wayland_socket,
+            kwin_pid=0,
+            screenshot_dir=screenshot_dir,
+            session_type=SessionType.LIVE,
+        )
+        self._running = True
+        self._app_counter: int = 0
+        self._keep_screenshots: bool = False
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
+    @property
+    def info(self) -> SessionInfo | None:
+        return self._info if self._running else None
+
+    @property
+    def wayland_socket(self) -> str:
+        return self._info.wayland_socket
+
+    def launch_app(self, command: list[str], extra_env: dict[str, str] | None = None) -> AppInfo:
+        """Launch an application in the live session.
+
+        Returns AppInfo with pid, command, and log_path.
+        """
+        if not self._running:
+            msg = "Session is not running"
+            raise RuntimeError(msg)
+
+        env = {
+            **os.environ,
+            "WAYLAND_DISPLAY": self._info.wayland_socket,
+            "QT_QPA_PLATFORM": "wayland",
+            "QT_LINUX_ACCESSIBILITY_ALWAYS_ON": "1",
+            "QT_ACCESSIBILITY": "1",
+        }
+        if self._info.dbus_address:
+            env["DBUS_SESSION_BUS_ADDRESS"] = self._info.dbus_address
+        if extra_env:
+            env.update(extra_env)
+
+        app_name = Path(command[0]).stem if command else "unknown"
+        self._app_counter += 1
+        log_path = self._info.screenshot_dir / f"app_{app_name}_{self._app_counter}.log"
+        log_file = log_path.open("ab")
+
+        proc = subprocess.Popen(
+            command,
+            env=env,
+            stdout=log_file,
+            stderr=log_file,
+        )
+        log_file.close()
+
+        app_info = AppInfo(
+            pid=proc.pid,
+            command=" ".join(command),
+            log_path=log_path,
+            process=proc,
+        )
+        self._info.app_pid = proc.pid
+        self._info.apps[proc.pid] = app_info
+        return app_info
+
+    def read_app_log(self, pid: int, last_n_lines: int = 50) -> str:
+        """Read the log output of a launched app."""
+        app = self._info.apps.get(pid)
+        if app is None:
+            available = list(self._info.apps.keys())
+            msg = f"No app with PID {pid}. Available PIDs: {available}"
+            raise ValueError(msg)
+
+        if not app.log_path.exists():
+            return "(no log output yet)"
+
+        text = app.log_path.read_text(errors="replace")
+        if last_n_lines > 0:
+            lines = text.splitlines()
+            text = "\n".join(lines[-last_n_lines:])
+        return text or "(no log output yet)"
+
+    def stop(self, *, keep_screenshots: bool = False) -> None:
+        """Disconnect from the live session.
+
+        Only cleans up screenshot directory. Does NOT kill KWin or any apps
+        that were already running before the connection.
+        """
+        if not self._running:
+            return
+        self._running = False
+
+        # Terminate apps launched by us
+        for app in self._info.apps.values():
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                app.process.terminate()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                app.process.wait(timeout=3)
+
+        if not keep_screenshots and self._info.screenshot_dir.exists():
+            shutil.rmtree(self._info.screenshot_dir, ignore_errors=True)

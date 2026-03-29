@@ -129,7 +129,18 @@ Triple isolation ensures no impact on the host desktop:
 - [x] `_run_atspi()` retry logic (1 retry with 0.5s delay) for transient AT-SPI2 bus failures
 - **Goal**: Address feedback from E2E PoC testing — enable state-aware UI queries and improve AT-SPI2 reliability
 
-### M11: Pluggable CLI Backend (Auto-detect Alternatives)
+### M11: Live Session Support (Real Desktop / Container Attachment)
+- [x] `SessionType` enum (`VIRTUAL` / `LIVE`) and `LiveSession` class in `session.py`
+- [x] `session_connect` MCP tool and engine method for attaching to existing KWin sessions
+- [x] Clipboard always enabled for live sessions (no `enable_clipboard` parameter needed)
+- [x] `session_stop` disconnects without killing KWin or pre-existing apps on live sessions
+- [x] `launch_app` supported on live sessions (subprocess with host env)
+- [x] `--default-live-session` CLI/server flag to switch default session mode
+- [x] Dynamic MCP tool descriptions based on session mode
+- [ ] ydotool fallback when EIS permission is denied on real sessions
+- **Goal**: Support "share my screen" collaboration and container-based agent desktops ([#1](https://github.com/isac322/kwin-mcp/issues/1))
+
+### M12: Pluggable CLI Backend (Auto-detect Alternatives)
 - [ ] Research functionally equivalent alternatives for each external CLI (`wl-copy`/`wl-paste`, `wtype`, `spectacle`, `dbus-send`)
 - [ ] Implement auto-detection: discover available CLIs at runtime and select the best match
 - [ ] Ensure all alternatives are functionally identical (no behavioral differences)

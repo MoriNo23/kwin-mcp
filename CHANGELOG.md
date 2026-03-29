@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `session_connect` tool for attaching to an existing KWin session (real desktop or container) instead of creating an isolated virtual one. Defaults to `$DBUS_SESSION_BUS_ADDRESS` and `$WAYLAND_DISPLAY` from the environment. Clipboard is always enabled for live sessions.
+- `--default-live-session` flag for both MCP server (`kwin-mcp`) and CLI (`kwin-mcp-cli`) to switch the default session mode from virtual to live. When active, `session_connect` becomes the recommended tool and `session_start` requires explicit invocation.
+- `LiveSession` class in `session.py` for managing connections to existing KWin compositors without lifecycle management
+- `SessionType` enum (`VIRTUAL` / `LIVE`) and `session_type` field on `SessionInfo` for distinguishing session types
+
+### Changed
+
+- `session_stop` now only disconnects (without killing KWin or pre-existing apps) when used with live sessions
+- Error messages for missing sessions now mention both `session_start` and `session_connect`
+- Clipboard error messages now mention `session_connect` as an alternative (clipboard is always enabled for live sessions)
+- Tool count increased from 29 to 30
+
 ## [0.6.0] - 2026-02-25
 
 ### Added
