@@ -144,9 +144,14 @@ class Session:
         # Build the wrapper script that runs inside dbus-run-session
         wrapper_script = self._build_wrapper_script(config)
 
-        # Start the isolated session in its own process group
+        # Start the isolated session in its own process group.
+        # stdin is redirected to /dev/null so the wrapper chain does not share
+        # the MCP server's stdin (which carries the JSON-RPC request stream
+        # when kwin-mcp runs under an MCP stdio client) — otherwise any child
+        # that reads stdin can consume MCP protocol bytes and hang the server.
         self._process = subprocess.Popen(
             ["dbus-run-session", "bash", "-c", wrapper_script],
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=self._build_env(config),
