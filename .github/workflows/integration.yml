@@ -35,6 +35,9 @@ jobs:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
       XDG_RUNTIME_DIR: /tmp/xdg-runtime-root
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      QT_QUICK_BACKEND: software
+      KWIN_COMPOSE: Q
     steps:
       - name: Prepare XDG_RUNTIME_DIR
         run: |

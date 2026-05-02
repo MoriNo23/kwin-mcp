@@ -372,8 +372,23 @@ env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM \
     --socket {self._socket_name} &
 KWIN_PID=$!
 
-# Wait for KWin socket to appear
-while [ ! -e "$XDG_RUNTIME_DIR/{self._socket_name}" ]; do sleep 0.1; done
+# Wait for KWin socket to appear, but do not block forever if KWin exits
+# before creating it (for example because a container lacks a runtime library).
+for _ in $(seq 1 100); do
+    if [ -e "$XDG_RUNTIME_DIR/{self._socket_name}" ]; then
+        break
+    fi
+    if ! kill -0 $KWIN_PID 2>/dev/null; then
+        wait $KWIN_PID
+        exit $?
+    fi
+    sleep 0.1
+done
+
+if [ ! -e "$XDG_RUNTIME_DIR/{self._socket_name}" ]; then
+    echo "KWin socket did not appear in time" >&2
+    exit 1
+fi
 sleep 0.3
 
 # Signal parent that setup is complete
