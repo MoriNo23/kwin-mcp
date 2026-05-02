@@ -27,9 +27,11 @@ dnf -y install kcalc kate
 # PyGObject / dbus-python build dependencies
 dnf -y install \
     python3 \
+    python3-devel \
     python3-pip \
     python3-gobject \
     python3-dbus \
+    dbus-devel \
     cairo-devel \
     gobject-introspection-devel \
     pkgconf \

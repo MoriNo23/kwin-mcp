@@ -32,6 +32,7 @@ apt-get install -y --no-install-recommends kcalc kate
 # PyGObject / dbus-python build dependencies
 apt-get install -y --no-install-recommends \
     python3 \
+    python3-dev \
     python3-pip \
     python3-gi \
     gir1.2-atspi-2.0 \
