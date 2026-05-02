@@ -341,16 +341,33 @@ echo "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
 
 # Ensure all child processes are cleaned up on exit
 cleanup() {{
-    kill $KWIN_PID $AT_SPI_PID 2>/dev/null
-    wait $KWIN_PID $AT_SPI_PID 2>/dev/null
+    kill $KWIN_PID ${{AT_SPI_PID:+$AT_SPI_PID}} 2>/dev/null
+    wait $KWIN_PID ${{AT_SPI_PID:+$AT_SPI_PID}} 2>/dev/null
 }}
 trap cleanup EXIT TERM INT HUP
 
 # Start the AT-SPI accessibility bus.
 # ATSPI_DBUS_IMPLEMENTATION is set in _build_env() to force dbus-daemon
 # instead of dbus-broker (which reuses the host's AT-SPI bus).
-/usr/lib/at-spi-bus-launcher --launch-immediately &
-AT_SPI_PID=$!
+AT_SPI_LAUNCHER=""
+for candidate in \
+    /usr/lib/at-spi-bus-launcher \
+    /usr/libexec/at-spi-bus-launcher \
+    /usr/lib/at-spi2-core/at-spi-bus-launcher \
+    at-spi-bus-launcher; do
+    if [ -x "$candidate" ]; then
+        AT_SPI_LAUNCHER="$candidate"
+        break
+    fi
+    if command -v "$candidate" >/dev/null 2>&1; then
+        AT_SPI_LAUNCHER="$(command -v "$candidate")"
+        break
+    fi
+done
+if [ -n "$AT_SPI_LAUNCHER" ]; then
+    "$AT_SPI_LAUNCHER" --launch-immediately &
+    AT_SPI_PID=$!
+fi
 sleep 0.2
 
 # Pre-set D-Bus activation environment BEFORE starting KWin.
