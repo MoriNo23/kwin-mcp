@@ -31,7 +31,7 @@ pacman -S --noconfirm --needed kcalc kate
 pacman -S --noconfirm --needed \
     python \
     python-gobject \
-    dbus-python-common \
+    python-dbus \
     cairo \
     gobject-introspection \
     pkgconf \

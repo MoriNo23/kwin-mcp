@@ -6,12 +6,13 @@ zypper --non-interactive refresh
 
 # KWin + session bootstrap. Tumbleweed ships Plasma 6 → kwin6.
 # Fall back to kwin5 if kwin6 is not yet indexed on the rolling release.
-if ! zypper --non-interactive install kwin6; then
-    zypper --non-interactive install kwin5
+if ! zypper --non-interactive install --no-recommends kwin6; then
+    zypper --non-interactive install --no-recommends kwin5
 fi
 
-zypper --non-interactive install \
+zypper --non-interactive install --no-recommends \
     dbus-1 \
+    dbus-1-devel \
     glib2-tools \
     at-spi2-core \
     libwayland-client0 \
@@ -20,20 +21,21 @@ zypper --non-interactive install \
     Mesa-libGL1
 
 # Clipboard / input helpers
-zypper --non-interactive install \
+zypper --non-interactive install --no-recommends \
     wl-clipboard \
     wtype \
     spectacle
 
 # End-to-end GUI targets (kcalc for arithmetic, kate for keyboard input)
-zypper --non-interactive install kcalc kate
+zypper --non-interactive install --no-recommends kcalc kate
 
 # PyGObject / dbus-python build dependencies
-zypper --non-interactive install \
-    python3 \
-    python3-pip \
-    python3-gobject \
-    python3-dbus-python \
+zypper --non-interactive install --no-recommends \
+    python313 \
+    python313-devel \
+    python313-pip \
+    python313-gobject \
+    python313-dbus-python \
     cairo-devel \
     gobject-introspection-devel \
     pkgconf \
