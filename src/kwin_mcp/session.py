@@ -177,10 +177,11 @@ class Session:
         # Wait for kwin to be ready (socket file appears)
         socket_path = Path(runtime_dir) / self._socket_name
         if not self._wait_for_socket(socket_path, timeout=10.0):
+            process = self._process
             self.stop()
             stderr = ""
-            if self._process and self._process.stderr:
-                stderr = self._process.stderr.read().decode(errors="replace")
+            if process and process.stderr:
+                stderr = process.stderr.read().decode(errors="replace")
             msg = f"KWin failed to start. stderr: {stderr}"
             raise RuntimeError(msg)
 

@@ -37,7 +37,6 @@ docker run --rm \
     -e XDG_RUNTIME_DIR=/tmp/xdg-runtime-root \
     -e LIBGL_ALWAYS_SOFTWARE=1 \
     -e QT_QUICK_BACKEND=software \
-    -e KWIN_COMPOSE=Q \
     "$image" \
     bash -c "
         set -euo pipefail
