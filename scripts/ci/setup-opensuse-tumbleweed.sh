@@ -13,6 +13,7 @@ zypper --non-interactive install --no-recommends xdg-desktop-portal-kde
 
 zypper --non-interactive install --no-recommends \
     bash \
+    util-linux \
     dbus-1 \
     dbus-1-devel \
     glib2-tools \
@@ -77,4 +78,14 @@ zypper --non-interactive install --no-recommends \
 # uv (Python package manager)
 if ! command -v uv >/dev/null 2>&1; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
+
+# Guard: the busybox cascade above can leave /usr/bin/bash and /usr/bin/sh
+# in an inconsistent state. The next workflow step will run with `shell: bash`
+# (set in defaults.run.shell) and fail with `OCI runtime exec failed` if bash
+# is not on PATH. Surfacing the failure here, before pytest, makes the cause
+# obvious instead of producing an exec-127 in a later, unrelated step.
+if ! command -v bash >/dev/null 2>&1; then
+    echo "ERROR: bash binary missing from PATH after openSUSE setup" >&2
+    exit 1
 fi
