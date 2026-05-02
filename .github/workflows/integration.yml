@@ -27,7 +27,7 @@ jobs:
           - distro: opensuse-tumbleweed
             image: opensuse/tumbleweed:latest
           - distro: ubuntu
-            image: ubuntu:24.04
+            image: ubuntu:26.04
     container:
       image: ${{ matrix.image }}
       options: --user root

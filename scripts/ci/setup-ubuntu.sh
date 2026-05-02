@@ -12,6 +12,7 @@ apt-get update
 # KWin + session bootstrap
 apt-get install -y --no-install-recommends \
     kwin-wayland \
+    xdg-desktop-portal-kde \
     dbus-daemon \
     libglib2.0-bin \
     at-spi2-core \
