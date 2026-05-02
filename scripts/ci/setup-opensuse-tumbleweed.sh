@@ -9,6 +9,7 @@ zypper --non-interactive refresh
 if ! zypper --non-interactive install --no-recommends kwin6; then
     zypper --non-interactive install --no-recommends kwin5
 fi
+zypper --non-interactive install --no-recommends xdg-desktop-portal-kde
 
 zypper --non-interactive install --no-recommends \
     bash \
@@ -37,6 +38,7 @@ zypper --non-interactive install --no-recommends kcalc kate
 # PyGObject / dbus-python build dependencies
 zypper --non-interactive remove busybox-diffutils
 zypper --non-interactive install --no-recommends gettext-tools diffutils
+ln -sf /usr/bin/bash /bin/sh
 
 zypper --non-interactive install --no-recommends \
     python313 \
