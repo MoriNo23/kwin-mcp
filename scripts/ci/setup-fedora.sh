@@ -30,6 +30,23 @@ dnf -y install kcalc kate
 # Container runtimes can reject binaries with file capabilities.
 setcap -r "$(command -v kwin_wayland)" 2>/dev/null || true
 
+# Disable xdg-desktop-portal D-Bus auto-activation. KWin auto-activates the
+# portal on startup, but the portal backend cannot reach a working compositor
+# in headless containers and crashes; the activation cascade then segfaults
+# KWin while it waits for the portal reply. Renaming the .service files
+# prevents activation entirely; KWin runs fine without the portal in our
+# test scope (no screencast / sandboxed file-chooser usage).
+for service in \
+    org.freedesktop.portal.Desktop \
+    org.freedesktop.portal.Documents \
+    org.freedesktop.impl.portal.desktop.kde \
+    org.freedesktop.impl.portal.desktop.gtk; do
+    file="/usr/share/dbus-1/services/${service}.service"
+    if [ -e "$file" ]; then
+        mv "$file" "${file}.disabled"
+    fi
+done
+
 # PyGObject / dbus-python build dependencies
 dnf -y install \
     python3 \
