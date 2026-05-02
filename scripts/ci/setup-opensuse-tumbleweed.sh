@@ -11,6 +11,7 @@ if ! zypper --non-interactive install --no-recommends kwin6; then
 fi
 
 zypper --non-interactive install --no-recommends \
+    bash \
     dbus-1 \
     dbus-1-devel \
     glib2-tools \
@@ -18,7 +19,11 @@ zypper --non-interactive install --no-recommends \
     libwayland-client0 \
     wayland-utils \
     Mesa-dri \
+    libcap-progs \
     Mesa-libGL1
+
+# Container runtimes can reject binaries with file capabilities.
+setcap -r "$(command -v kwin_wayland)" 2>/dev/null || true
 
 # Clipboard / input helpers
 zypper --non-interactive install --no-recommends \
