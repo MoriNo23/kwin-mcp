@@ -13,7 +13,8 @@ dnf -y install \
     wayland-devel \
     wayland-utils \
     mesa-dri-drivers \
-    mesa-libGL
+    mesa-libGL \
+    libei
 
 # Clipboard / input helpers
 dnf -y install \
@@ -33,6 +34,7 @@ dnf -y install \
     python3-dbus \
     dbus-devel \
     cairo-devel \
+    cairo-gobject-devel \
     gobject-introspection-devel \
     pkgconf \
     gcc \

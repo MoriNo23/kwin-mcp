@@ -18,7 +18,8 @@ apt-get install -y --no-install-recommends \
     libwayland-client0 \
     wayland-utils \
     libgl1-mesa-dri \
-    libglvnd0
+    libglvnd0 \
+    libei1
 
 # Clipboard / input helpers
 apt-get install -y --no-install-recommends \
