@@ -35,10 +35,14 @@ zypper --non-interactive install --no-recommends \
 # End-to-end GUI targets (kcalc for arithmetic, kate for keyboard input)
 zypper --non-interactive install --no-recommends kcalc kate
 
-# PyGObject / dbus-python build dependencies
-zypper --non-interactive remove busybox-diffutils
-zypper --non-interactive install --no-recommends gettext-tools diffutils
-ln -sf /usr/bin/bash /bin/sh
+# PyGObject / dbus-python build dependencies.
+# --force-resolution lets full GNU diffutils/gettext replace the busybox-*
+# providers without a separate `zypper remove` step. Removing busybox-diffutils
+# explicitly cascades on Tumbleweed and can wipe /usr/bin/sh, after which the
+# next workflow step exits with `OCI runtime exec failed: exec: "sh": not found`.
+zypper --non-interactive install --no-recommends --force-resolution \
+    diffutils gettext-tools coreutils
+ln -sf /usr/bin/bash /bin/sh 2>/dev/null || true
 
 zypper --non-interactive install --no-recommends \
     python313 \
