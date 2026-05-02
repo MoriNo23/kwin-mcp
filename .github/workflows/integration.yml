@@ -11,6 +11,10 @@ concurrency:
   group: integration-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   integration:
     name: ${{ matrix.distro }}
