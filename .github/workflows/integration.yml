@@ -58,6 +58,23 @@ jobs:
       - name: Sync Python dependencies
         run: uv sync --group test
 
+      - name: Diagnose KWin runtime
+        run: |
+          echo "::group::kwin_wayland version + linker bindings"
+          kwin_wayland --version 2>&1 || true
+          ldd "$(command -v kwin_wayland)" 2>/dev/null | grep -E "EGL|gbm|drm|GL\.so|vulkan|xkb" || true
+          echo "::endgroup::"
+          echo "::group::Graphics environment"
+          ls -l /dev/dri 2>/dev/null || echo "no /dev/dri"
+          ls /usr/lib*/libEGL* /usr/lib*/libgbm* 2>/dev/null | head -10 || echo "no EGL/gbm libs found on common paths"
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"
+          echo "QT_QPA_PLATFORM=$QT_QPA_PLATFORM"
+          echo "::endgroup::"
+          echo "::group::xkb data"
+          ls /usr/share/X11/xkb/symbols/us 2>/dev/null || echo "no xkb-data symbols/us"
+          ls /usr/share/X11/xkb/keymap.dir 2>/dev/null || echo "no xkb keymap.dir"
+          echo "::endgroup::"
+
       - name: Run integration tests
         run: uv run pytest tests/integration/ -v --junit-xml=report.xml
 
