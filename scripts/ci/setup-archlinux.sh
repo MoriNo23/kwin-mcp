@@ -10,6 +10,7 @@ pacman -Syu --noconfirm --needed
 # KWin + session bootstrap
 pacman -S --noconfirm --needed \
     kwin \
+    xdg-desktop-portal-kde \
     dbus \
     glib2 \
     at-spi2-core \

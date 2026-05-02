@@ -7,6 +7,7 @@ dnf -y update
 # KWin + session bootstrap
 dnf -y install \
     kwin-wayland \
+    xdg-desktop-portal-kde \
     dbus-daemon \
     glib2 \
     at-spi2-core \
