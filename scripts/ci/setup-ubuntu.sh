@@ -19,6 +19,7 @@ apt-get install -y --no-install-recommends \
     wayland-utils \
     libgl1-mesa-dri \
     libglvnd0 \
+    libcap2-bin \
     libei1
 
 # Clipboard / input helpers
@@ -29,6 +30,9 @@ apt-get install -y --no-install-recommends \
 
 # End-to-end GUI targets (kcalc for arithmetic, kate for keyboard input)
 apt-get install -y --no-install-recommends kcalc kate
+
+# Container runtimes can reject binaries with file capabilities.
+setcap -r "$(command -v kwin_wayland)" 2>/dev/null || true
 
 # PyGObject / dbus-python build dependencies
 apt-get install -y --no-install-recommends \

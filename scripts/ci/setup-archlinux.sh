@@ -17,6 +17,7 @@ pacman -S --noconfirm --needed \
     wayland-utils \
     mesa \
     libglvnd \
+    libcap \
     libei \
     xorg-xwayland
 
@@ -28,6 +29,9 @@ pacman -S --noconfirm --needed \
 
 # End-to-end GUI targets (kcalc for arithmetic, kate for keyboard input)
 pacman -S --noconfirm --needed kcalc kate
+
+# Container runtimes can reject binaries with file capabilities.
+setcap -r "$(command -v kwin_wayland)" 2>/dev/null || true
 
 # PyGObject / dbus-python build dependencies
 pacman -S --noconfirm --needed \

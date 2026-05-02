@@ -14,6 +14,7 @@ dnf -y install \
     wayland-utils \
     mesa-dri-drivers \
     mesa-libGL \
+    libcap \
     libei
 
 # Clipboard / input helpers
@@ -24,6 +25,9 @@ dnf -y install \
 
 # End-to-end GUI targets (kcalc for arithmetic, kate for keyboard input)
 dnf -y install kcalc kate
+
+# Container runtimes can reject binaries with file capabilities.
+setcap -r "$(command -v kwin_wayland)" 2>/dev/null || true
 
 # PyGObject / dbus-python build dependencies
 dnf -y install \
