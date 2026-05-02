@@ -13,6 +13,7 @@ apt-get update
 apt-get install -y --no-install-recommends \
     kwin-wayland \
     xdg-desktop-portal-kde \
+    xwayland \
     dbus-daemon \
     libglib2.0-bin \
     at-spi2-core \

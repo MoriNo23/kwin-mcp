@@ -8,6 +8,7 @@ dnf -y update
 dnf -y install \
     kwin-wayland \
     xdg-desktop-portal-kde \
+    xorg-x11-server-Xwayland \
     dbus-daemon \
     glib2 \
     at-spi2-core \
