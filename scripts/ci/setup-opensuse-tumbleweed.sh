@@ -30,6 +30,7 @@ zypper --non-interactive install --no-recommends \
 zypper --non-interactive install --no-recommends kcalc kate
 
 # PyGObject / dbus-python build dependencies
+zypper --non-interactive remove busybox-diffutils
 zypper --non-interactive install --no-recommends gettext-tools diffutils
 
 zypper --non-interactive install --no-recommends \
