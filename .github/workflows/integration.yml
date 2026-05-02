@@ -1,0 +1,72 @@
+name: Integration (cross-distro)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: integration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    name: ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: archlinux
+            image: archlinux:latest
+          - distro: fedora
+            image: fedora:latest
+          - distro: opensuse-tumbleweed
+            image: opensuse/tumbleweed:latest
+          - distro: ubuntu
+            image: ubuntu:24.04
+    container:
+      image: ${{ matrix.image }}
+      options: --user root
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      XDG_RUNTIME_DIR: /tmp/xdg-runtime-root
+    steps:
+      - name: Prepare XDG_RUNTIME_DIR
+        run: |
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+
+      - uses: actions/checkout@v6
+
+      - name: Install system dependencies (${{ matrix.distro }})
+        run: bash scripts/ci/setup-${{ matrix.distro }}.sh
+
+      - name: Expose uv on PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Sync Python dependencies
+        run: uv sync --group test
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration/ -v --junit-xml=report.xml
+
+      - name: Upload pytest report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pytest-report-${{ matrix.distro }}
+          path: report.xml
+          if-no-files-found: ignore
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-${{ matrix.distro }}
+          path: /tmp/kwin-mcp-screenshots-*/
+          if-no-files-found: ignore
