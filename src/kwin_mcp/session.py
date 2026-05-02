@@ -382,10 +382,23 @@ dbus-update-activation-environment WAYLAND_DISPLAY={self._socket_name} QT_QPA_PL
 # to connect to another compositor as a client.
 # Explicitly pass KWIN_ permission env vars to ensure they reach the
 # KWin process (environment inheritance through dbus-run-session can be unreliable).
+#
+# The XKB_DEFAULT_* / KWIN_XKB_DEFAULT_KEYMAP env vars and the
+# --no-global-shortcuts flag mirror KDE's selenium CI driver:
+#   https://github.com/KDE/selenium-webdriver-at-spi/blob/master/run.rb
+# (function kwin_reexec!). They are the right defaults for a headless
+# virtual KWin compositor used for automation: predictable keymap, and
+# no attempt to register global shortcuts via D-Bus services that may
+# not be running inside a stripped container. Do not remove without
+# verifying KWin still starts on Fedora/Ubuntu/openSUSE containers.
 env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM \
     KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 \
     KWIN_SCREENSHOT_NO_PERMISSION_CHECKS=1 \
-    kwin_wayland --virtual --no-lockscreen \
+    KWIN_XKB_DEFAULT_KEYMAP=true \
+    XKB_DEFAULT_LAYOUT=us \
+    XKB_DEFAULT_VARIANT= \
+    XKB_DEFAULT_OPTIONS= \
+    kwin_wayland --virtual --no-lockscreen --no-global-shortcuts \
     --width {config.screen_width} --height {config.screen_height} \
     --socket {self._socket_name} &
 KWIN_PID=$!
