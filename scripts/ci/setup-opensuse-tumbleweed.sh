@@ -30,6 +30,8 @@ zypper --non-interactive install --no-recommends \
 zypper --non-interactive install --no-recommends kcalc kate
 
 # PyGObject / dbus-python build dependencies
+zypper --non-interactive install --no-recommends gettext-tools diffutils
+
 zypper --non-interactive install --no-recommends \
     python313 \
     python313-devel \

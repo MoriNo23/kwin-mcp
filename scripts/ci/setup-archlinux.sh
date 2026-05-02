@@ -16,7 +16,9 @@ pacman -S --noconfirm --needed \
     wayland \
     wayland-utils \
     mesa \
-    libglvnd
+    libglvnd \
+    libei \
+    xorg-xwayland
 
 # Clipboard / input helpers
 pacman -S --noconfirm --needed \
