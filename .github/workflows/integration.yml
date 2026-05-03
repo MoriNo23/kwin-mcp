@@ -74,6 +74,19 @@ jobs:
           ls /usr/share/X11/xkb/symbols/us 2>/dev/null || echo "no xkb-data symbols/us"
           ls /usr/share/X11/xkb/keymap.dir 2>/dev/null || echo "no xkb keymap.dir"
           echo "::endgroup::"
+          echo "::group::Try kwin_wayland --virtual under gdb"
+          ulimit -c unlimited || true
+          timeout 8 env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM \
+            KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 \
+            QT_LOGGING_RULES='kwin*=debug' \
+            dbus-run-session -- gdb --batch \
+              -ex 'set pagination off' \
+              -ex 'handle SIGPIPE nostop noprint' \
+              -ex 'run --virtual --width 320 --height 240 --no-lockscreen --no-global-shortcuts --socket diag' \
+              -ex 'thread apply all bt full' \
+              -ex 'info sharedlibrary' \
+              --args kwin_wayland 2>&1 | head -300 || echo "EXIT $?"
+          echo "::endgroup::"
 
       - name: Run integration tests
         run: uv run pytest tests/integration/ -v --junit-xml=report.xml
