@@ -86,35 +86,12 @@ if ! command -v uv >/dev/null 2>&1; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
-# Round 19a diagnostic: the previous round's `command -v bash` guard passed
-# (setup exit 0) yet the very next workflow step's OCI exec still failed
-# with `exec: "bash": executable file not found in $PATH`. That means bash
-# was resolvable from THIS shell's environment but not from the OCI runtime's
-# fresh PATH lookup at step boundary. Capture every relevant locator so the
-# next round can decide whether to symlink, set workflow-level PATH, or
-# install bash to a different prefix.
-echo "::group::bash diagnostic (Round 19a)"
-echo "PATH=$PATH"
-echo "--- command -v bash ---"
-command -v bash 2>&1 || echo "MISSING via command -v"
-echo "--- type -a bash ---"
-type -a bash 2>&1 || true
-echo "--- which -a bash ---"
-which -a bash 2>&1 || true
-echo "--- ls /bin/bash /usr/bin/bash /usr/local/bin/bash ---"
-ls -la /bin/bash /usr/bin/bash /usr/local/bin/bash 2>&1 || true
-echo "--- ls /bin/sh; readlink /bin/sh ---"
-ls -la /bin/sh 2>&1 || true
-readlink /bin/sh 2>&1 || true
-echo "--- rpm -q bash util-linux coreutils busybox ---"
-rpm -q bash util-linux coreutils busybox 2>&1 || true
-echo "--- rpm -ql bash | grep bash$\\|sh$ ---"
-rpm -ql bash 2>&1 | grep -E '/bash$|/sh$' || true
-echo "--- getent passwd root ---"
-getent passwd root 2>&1 || true
-echo "::endgroup::"
-
-if ! command -v bash >/dev/null 2>&1; then
-    echo "ERROR: bash binary missing from PATH after openSUSE setup" >&2
+# The workflow's defaults.run.shell uses /usr/bin/bash as an absolute path
+# (Round 19a evidence: PATH inside the setup step had bash, but the next
+# step's docker exec did its own PATH lookup against a different env and
+# failed with `exec: "bash": not found`). Catch the case where the busybox
+# cascade above somehow leaves /usr/bin/bash unwritten.
+if [ ! -x /usr/bin/bash ]; then
+    echo "ERROR: /usr/bin/bash missing after openSUSE setup" >&2
     exit 1
 fi
