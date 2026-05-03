@@ -81,6 +81,20 @@ zypper --non-interactive install --no-recommends \
     gcc \
     git
 
+# Tumbleweed installs versioned compiler binaries (e.g. /usr/bin/gcc-15)
+# but the unversioned /usr/bin/gcc symlink lives in a separate `alts`
+# post-install hook that is skipped by --no-recommends + --non-interactive.
+# pycairo's meson build probes `cc`/`gcc` first, so missing symlinks fail
+# the wheel build with `Unknown compiler(s)`. Backstop: link the highest
+# versioned gcc to the unversioned names.
+if ! command -v gcc >/dev/null 2>&1; then
+    GCC_BIN=$(ls /usr/bin/gcc-[0-9]* /usr/bin/gcc[0-9]* 2>/dev/null | sort -V | tail -1)
+    if [ -n "$GCC_BIN" ]; then
+        ln -sf "$GCC_BIN" /usr/bin/gcc
+        ln -sf "$GCC_BIN" /usr/bin/cc
+    fi
+fi
+
 # uv (Python package manager)
 if ! command -v uv >/dev/null 2>&1; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
