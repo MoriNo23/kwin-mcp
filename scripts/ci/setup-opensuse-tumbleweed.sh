@@ -81,28 +81,21 @@ zypper --non-interactive install --no-recommends \
     gcc \
     git
 
-# Tumbleweed installs versioned compiler binaries (e.g. /usr/bin/gcc-15)
-# but the unversioned /usr/bin/gcc symlink lives in a separate `alts`
-# post-install hook that is skipped by --no-recommends + --non-interactive.
-# pycairo's meson build probes `cc`/`gcc` first, so missing symlinks fail
-# the wheel build with `Unknown compiler(s)`. Idempotent backstop: locate
-# the newest versioned gcc binary and force-link it to the unversioned
-# names. ln -sf is no-op-safe if the link already points to the same target.
-echo "::group::gcc symlink diagnostic (Round 19g)" >&2
-ls -la /usr/bin/gcc* /usr/bin/cc* 2>&1 | head -30 >&2 || true
-echo "command -v gcc -> $(command -v gcc 2>&1 || echo NOT_FOUND)" >&2
-echo "::endgroup::" >&2
-
-GCC_BIN=$(ls /usr/bin/gcc-[0-9]* /usr/bin/gcc[0-9]* 2>/dev/null \
-    | grep -vE '\-doc$|\-locale$|\.gz$|\.so' \
-    | sort -V | tail -1)
-if [ -n "$GCC_BIN" ] && [ -x "$GCC_BIN" ]; then
-    ln -sf "$GCC_BIN" /usr/bin/gcc
-    ln -sf "$GCC_BIN" /usr/bin/cc
-    echo "Symlinked $GCC_BIN to /usr/bin/gcc and /usr/bin/cc" >&2
-else
-    echo "WARNING: no versioned gcc binary found to symlink" >&2
-fi
+# Round 19g diagnostic showed /usr/bin/gcc + /usr/bin/cc already symlink to
+# gcc-15 from the RPM, but pycairo still failed at "cc not found" in Round
+# 19f. Hypothesis: a uv build-isolation env masks /usr/bin from PATH, OR a
+# post-install hook fires after setup completes. Print PATH and gcc binary
+# state, then unconditionally re-create the symlinks (idempotent).
+{
+    echo "::group::gcc/PATH diagnostic"
+    echo "PATH=${PATH}"
+    ls -la /usr/bin/gcc /usr/bin/cc /usr/bin/gcc-15 2>&1 || true
+    type gcc 2>&1 || true
+    type cc 2>&1 || true
+    echo "::endgroup::"
+} >&2
+[ -x /usr/bin/gcc-15 ] && ln -sf /usr/bin/gcc-15 /usr/bin/gcc || true
+[ -x /usr/bin/gcc-15 ] && ln -sf /usr/bin/gcc-15 /usr/bin/cc || true
 
 # uv (Python package manager)
 if ! command -v uv >/dev/null 2>&1; then
