@@ -416,7 +416,7 @@ env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM \
     XKB_DEFAULT_OPTIONS= \
     "${{KWIN_RUNNER[@]}}" kwin_wayland --virtual --no-lockscreen --no-global-shortcuts \
     --width {config.screen_width} --height {config.screen_height} \
-    --socket {self._socket_name} 2> >(tee -a "$KWIN_LOG" >&2) &
+    --socket {self._socket_name} > >(tee -a "$KWIN_LOG" >&2) 2>&1 &
 KWIN_PID=$!
 
 # Wait for KWin socket to appear, but do not block forever if KWin exits
