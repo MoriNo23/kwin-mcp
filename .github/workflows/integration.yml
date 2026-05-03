@@ -13,7 +13,11 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    # Absolute path bypasses the OCI runtime's container-PATH lookup, which
+    # fails on opensuse/tumbleweed:latest even though /usr/bin/bash exists
+    # (Round 19a diagnostic confirmed bash on PATH inside the setup step yet
+    # the next step's docker exec still got `exec: "bash": not found`).
+    shell: '/usr/bin/bash --noprofile --norc -e -o pipefail {0}'
 
 jobs:
   integration:
@@ -60,6 +64,13 @@ jobs:
       LIBGL_ALWAYS_SOFTWARE: "1"
       QT_QUICK_BACKEND: software
       KWIN_MCP_DEBUG: "1"
+      # Round 19b: surface KWin's own EIS / input / screenshot lifecycle
+      # to /tmp/kwin-mcp-kwin-*.log so the pre-existing libei "Broken pipe"
+      # and ScreenShot2 "Cancelled" symptoms can be diagnosed from the
+      # compositor's perspective. Round 19a's gdb-only artifact captured
+      # only thread startup chatter; KWin's qCDebug() sites stay silent
+      # without QT_LOGGING_RULES.
+      QT_LOGGING_RULES: "kwin*.debug=true"
     steps:
       - name: Prepare XDG_RUNTIME_DIR
         run: |
