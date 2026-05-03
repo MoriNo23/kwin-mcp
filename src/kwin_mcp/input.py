@@ -21,6 +21,7 @@ import time
 from enum import Enum
 
 import dbus
+import dbus.mainloop.glib
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 
@@ -233,15 +234,18 @@ class EISClient:
     """
 
     def __init__(self, dbus_address: str) -> None:
+        # dbus-python is not thread-safe by default. We are about to spin a
+        # background GLib thread to drain D-Bus signals (so dbus-daemon does
+        # not kick us off for outgoing-buffer overflow, which would otherwise
+        # cause KWin's EisBackend to destroy the EisContext via its
+        # QDBusServiceWatcher and surface as "libei: failed to send message:
+        # Broken pipe" on the next input call). The threads_init() call must
+        # happen before the second thread is created, otherwise dbus-glib's
+        # signal dispatch is not safe across threads and the buffer still
+        # overflows even with the loop running.
+        dbus.mainloop.glib.threads_init()
         DBusGMainLoop(set_as_default=True)
         self._bus = dbus.bus.BusConnection(dbus_address)
-        # KWin's eisbackend ties the EIS socket lifetime to this D-Bus connection
-        # via QDBusServiceWatcher::serviceUnregistered. dbus-python without a
-        # running event loop accumulates incoming broadcasts (NameOwnerChanged,
-        # AT-SPI signal flood from wait_for_element polling) until the daemon
-        # kicks us off for outgoing-buffer overflow — at which point KWin
-        # destroys the EisContext and any later libei call hits "Broken pipe".
-        # Drain signals from a daemon thread for the lifetime of the client.
         self._glib_loop = GLib.MainLoop()
         self._glib_thread = threading.Thread(target=self._glib_loop.run, daemon=True)
         self._glib_thread.start()
