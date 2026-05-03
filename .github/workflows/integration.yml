@@ -62,7 +62,6 @@ jobs:
       LC_ALL: C.UTF-8
       XDG_RUNTIME_DIR: /tmp/xdg-runtime-root
       LIBGL_ALWAYS_SOFTWARE: "1"
-      QT_QUICK_BACKEND: software
       KWIN_MCP_DEBUG: "1"
       # Round 19b: surface KWin's own EIS / input / screenshot lifecycle
       # to /tmp/kwin-mcp-kwin-*.log so the pre-existing libei "Broken pipe"
