@@ -391,6 +391,22 @@ dbus-update-activation-environment WAYLAND_DISPLAY={self._socket_name} QT_QPA_PL
 # no attempt to register global shortcuts via D-Bus services that may
 # not be running inside a stripped container. Do not remove without
 # verifying KWin still starts on Fedora/Ubuntu/openSUSE containers.
+# Optional CI-only KWin backtrace capture. When KWIN_MCP_DEBUG=1 and gdb is
+# on PATH, wrap kwin_wayland in gdb so a SIGSEGV produces a synchronous
+# backtrace alongside the bash post-mortem. Production runs without the env
+# var stay byte-identical to the previous launch.
+KWIN_RUNNER=()
+KWIN_LOG="/tmp/kwin-mcp-kwin-$$.log"
+if [ "${{KWIN_MCP_DEBUG:-}}" = "1" ] && command -v gdb >/dev/null 2>&1; then
+    KWIN_RUNNER=(gdb --batch
+        -ex 'set pagination off'
+        -ex 'handle SIGPIPE nostop noprint'
+        -ex 'run'
+        -ex 'thread apply all bt full'
+        -ex 'info sharedlibrary'
+        --args)
+fi
+
 env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM \
     KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 \
     KWIN_SCREENSHOT_NO_PERMISSION_CHECKS=1 \
@@ -398,9 +414,9 @@ env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM \
     XKB_DEFAULT_LAYOUT=us \
     XKB_DEFAULT_VARIANT= \
     XKB_DEFAULT_OPTIONS= \
-    kwin_wayland --virtual --no-lockscreen --no-global-shortcuts \
+    "${{KWIN_RUNNER[@]}}" kwin_wayland --virtual --no-lockscreen --no-global-shortcuts \
     --width {config.screen_width} --height {config.screen_height} \
-    --socket {self._socket_name} &
+    --socket {self._socket_name} 2> >(tee -a "$KWIN_LOG" >&2) &
 KWIN_PID=$!
 
 # Wait for KWin socket to appear, but do not block forever if KWin exits
