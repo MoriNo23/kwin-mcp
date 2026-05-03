@@ -79,6 +79,7 @@ jobs:
           ulimit -c unlimited || true
           timeout 8 env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM \
             KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 \
+            QT_QPA_PLATFORMTHEME=generic \
             QT_LOGGING_RULES='kwin*=debug' \
             dbus-run-session -- gdb --batch \
               -ex 'set pagination off' \
