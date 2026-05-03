@@ -107,6 +107,9 @@ if [ -n "${GITHUB_ENV:-}" ]; then
     {
         echo "CC=/usr/bin/gcc-15"
         echo "CXX=/usr/bin/gcc-15"
+        echo "AR=/usr/bin/ar"
+        echo "RANLIB=/usr/bin/ranlib"
+        echo "STRIP=/usr/bin/strip"
     } >> "$GITHUB_ENV"
 fi
 
