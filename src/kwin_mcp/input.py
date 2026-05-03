@@ -16,11 +16,13 @@ import ctypes.util
 import select
 import shutil
 import subprocess
+import threading
 import time
 from enum import Enum
 
 import dbus
 from dbus.mainloop.glib import DBusGMainLoop
+from gi.repository import GLib
 
 
 class MouseButton(Enum):
@@ -233,6 +235,16 @@ class EISClient:
     def __init__(self, dbus_address: str) -> None:
         DBusGMainLoop(set_as_default=True)
         self._bus = dbus.bus.BusConnection(dbus_address)
+        # KWin's eisbackend ties the EIS socket lifetime to this D-Bus connection
+        # via QDBusServiceWatcher::serviceUnregistered. dbus-python without a
+        # running event loop accumulates incoming broadcasts (NameOwnerChanged,
+        # AT-SPI signal flood from wait_for_element polling) until the daemon
+        # kicks us off for outgoing-buffer overflow — at which point KWin
+        # destroys the EisContext and any later libei call hits "Broken pipe".
+        # Drain signals from a daemon thread for the lifetime of the client.
+        self._glib_loop = GLib.MainLoop()
+        self._glib_thread = threading.Thread(target=self._glib_loop.run, daemon=True)
+        self._glib_thread.start()
         self._ei: int = 0  # ctypes void pointer (int representation)
         self._cookie: int = 0
         self._pointer: int = 0  # absolute pointer device
@@ -481,6 +493,11 @@ class EISClient:
         if self._ei:
             _libei.ei_unref(self._ei)
             self._ei = 0
+
+        if hasattr(self, "_glib_loop") and self._glib_loop is not None:
+            self._glib_loop.quit()
+            self._glib_thread.join(timeout=1.0)
+            self._glib_loop = None
 
 
 class InputBackend:

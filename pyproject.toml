@@ -127,3 +127,4 @@ unresolved-import = "ignore"
 include = ["src/kwin_mcp/input.py"]
 [tool.ty.overrides.rules]
 possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
