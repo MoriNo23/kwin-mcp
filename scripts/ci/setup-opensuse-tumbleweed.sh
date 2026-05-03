@@ -97,6 +97,19 @@ zypper --non-interactive install --no-recommends \
 [ -x /usr/bin/gcc-15 ] && ln -sf /usr/bin/gcc-15 /usr/bin/gcc || true
 [ -x /usr/bin/gcc-15 ] && ln -sf /usr/bin/gcc-15 /usr/bin/cc || true
 
+# Round 19h evidence: setup-step PATH includes /usr/bin and `type cc` resolves
+# to /usr/bin/cc, but uv's PEP 517 build for pycairo still fails meson's
+# `cc --version` probe with [Errno 2]. uv's build-isolation venv apparently
+# loses /usr/bin from the subprocess PATH on this image. Propagate absolute
+# CC/CXX via $GITHUB_ENV so the next workflow step (uv sync) bypasses meson's
+# PATH lookup entirely and reaches the compiler by absolute path.
+if [ -n "${GITHUB_ENV:-}" ]; then
+    {
+        echo "CC=/usr/bin/gcc-15"
+        echo "CXX=/usr/bin/gcc-15"
+    } >> "$GITHUB_ENV"
+fi
+
 # uv (Python package manager)
 if ! command -v uv >/dev/null 2>&1; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
