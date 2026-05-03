@@ -85,14 +85,23 @@ zypper --non-interactive install --no-recommends \
 # but the unversioned /usr/bin/gcc symlink lives in a separate `alts`
 # post-install hook that is skipped by --no-recommends + --non-interactive.
 # pycairo's meson build probes `cc`/`gcc` first, so missing symlinks fail
-# the wheel build with `Unknown compiler(s)`. Backstop: link the highest
-# versioned gcc to the unversioned names.
-if ! command -v gcc >/dev/null 2>&1; then
-    GCC_BIN=$(ls /usr/bin/gcc-[0-9]* /usr/bin/gcc[0-9]* 2>/dev/null | sort -V | tail -1)
-    if [ -n "$GCC_BIN" ]; then
-        ln -sf "$GCC_BIN" /usr/bin/gcc
-        ln -sf "$GCC_BIN" /usr/bin/cc
-    fi
+# the wheel build with `Unknown compiler(s)`. Idempotent backstop: locate
+# the newest versioned gcc binary and force-link it to the unversioned
+# names. ln -sf is no-op-safe if the link already points to the same target.
+echo "::group::gcc symlink diagnostic (Round 19g)" >&2
+ls -la /usr/bin/gcc* /usr/bin/cc* 2>&1 | head -30 >&2 || true
+echo "command -v gcc -> $(command -v gcc 2>&1 || echo NOT_FOUND)" >&2
+echo "::endgroup::" >&2
+
+GCC_BIN=$(ls /usr/bin/gcc-[0-9]* /usr/bin/gcc[0-9]* 2>/dev/null \
+    | grep -vE '\-doc$|\-locale$|\.gz$|\.so' \
+    | sort -V | tail -1)
+if [ -n "$GCC_BIN" ] && [ -x "$GCC_BIN" ]; then
+    ln -sf "$GCC_BIN" /usr/bin/gcc
+    ln -sf "$GCC_BIN" /usr/bin/cc
+    echo "Symlinked $GCC_BIN to /usr/bin/gcc and /usr/bin/cc" >&2
+else
+    echo "WARNING: no versioned gcc binary found to symlink" >&2
 fi
 
 # uv (Python package manager)
