@@ -61,6 +61,7 @@ dnf -y install \
     gobject-introspection-devel \
     pkgconf \
     gcc \
+    gdb \
     git
 
 # uv (Python package manager)

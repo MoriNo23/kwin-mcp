@@ -43,6 +43,7 @@ pacman -S --noconfirm --needed \
     gobject-introspection \
     pkgconf \
     gcc \
+    gdb \
     git
 
 # uv (Python package manager)

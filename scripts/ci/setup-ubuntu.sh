@@ -66,6 +66,7 @@ apt-get install -y --no-install-recommends \
     libdbus-1-dev \
     pkg-config \
     gcc \
+    gdb \
     git \
     ca-certificates \
     curl

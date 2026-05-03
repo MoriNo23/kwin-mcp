@@ -23,7 +23,8 @@ zypper --non-interactive install --no-recommends \
     Mesa-dri \
     libcap-progs \
     Mesa-libGL1 \
-    xwayland
+    xwayland \
+    gdb
 
 # Container runtimes can reject binaries with file capabilities.
 setcap -r "$(command -v kwin_wayland)" 2>/dev/null || true
