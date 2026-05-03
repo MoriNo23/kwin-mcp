@@ -16,6 +16,7 @@ import ctypes.util
 import select
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from enum import Enum
@@ -390,8 +391,31 @@ class EISClient:
         """Current time in microseconds."""
         return int(time.monotonic() * 1_000_000)
 
+    def _log_state(self, label: str) -> None:
+        # Round 19a diagnostic. The libei "Broken pipe" surfaces only at
+        # write time, so we cannot tell from libei alone WHEN the underlying
+        # KWin EisContext was torn down. KWin destroys the EisContext when it
+        # sees serviceUnregistered on our D-Bus client name. Logging
+        # bus.get_is_connected() and the GLib drain thread liveness
+        # immediately before each ei_dispatch lets us pinpoint the exact
+        # call boundary where the connection died, separating "D-Bus dropped"
+        # from "EIS socket closed for unrelated reason". Remove once Round 19
+        # identifies the real cause.
+        self._diag_seq = getattr(self, "_diag_seq", 0) + 1
+        try:
+            connected: object = self._bus.get_is_connected()
+        except Exception as exc:
+            connected = f"err:{type(exc).__name__}"
+        alive = self._glib_thread.is_alive() if hasattr(self, "_glib_thread") else "no-thread"
+        sys.stderr.write(
+            f"kwin-mcp[diag-{self._diag_seq}]: {label} "
+            f"bus_connected={connected} glib_alive={alive}\n"
+        )
+        sys.stderr.flush()
+
     def _flush(self) -> None:
         """Dispatch pending events to send data to KWin."""
+        self._log_state("flush")
         _libei.ei_dispatch(self._ei)
 
     def pointer_move_absolute(self, x: float, y: float) -> None:
