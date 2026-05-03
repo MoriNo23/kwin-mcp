@@ -144,6 +144,17 @@ if [ -n "${GITHUB_ENV:-}" ]; then
         if [ -n "$PKG_CONFIG_BIN" ]; then
             echo "PKG_CONFIG=$PKG_CONFIG_BIN"
         fi
+        # Round 19k: dbus-python's ninja link rule executes the bare-name
+        # `rm -f libdbus-gmain.a && /usr/bin/ar csrDT ...` shell command and
+        # dies with `/bin/sh: line 1: rm: command not found`. The setup-step
+        # PATH does include /usr/bin (verified by the gcc/PATH diagnostic),
+        # but uv's PEP 517 build subprocess on Tumbleweed somehow ends up
+        # without it. Re-export the full PATH explicitly so the next workflow
+        # step (uv sync) and any subprocess uv spawns inherit it. We cannot
+        # use $GITHUB_PATH (which only prepends) because /usr/bin is already
+        # there at workflow level -- the loss happens deeper, and only an
+        # explicit PATH= in $GITHUB_ENV is propagated through uv's env.
+        echo "PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:${PATH}"
     } >> "$GITHUB_ENV"
 fi
 
