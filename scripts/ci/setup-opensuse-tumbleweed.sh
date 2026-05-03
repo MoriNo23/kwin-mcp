@@ -107,11 +107,19 @@ zypper --non-interactive install --no-recommends \
 # Round 19i adds PKG_CONFIG. With the CC/CXX propagation in place pycairo's
 # meson run advanced to "Did not find pkg-config by name 'pkg-config'" -- the
 # same lost-/usr/bin path stripped pkgconf too. meson honors $PKG_CONFIG as
-# an absolute-path override (see meson.build/dependency('cairo')); pointing
-# it at the pkgconf-provided /usr/bin/pkg-config symlink bypasses the PATH
-# lookup the same way CC/CXX does for the compiler.
+# an absolute-path override; pointing it at the real pkgconf binary bypasses
+# the PATH lookup the same way CC/CXX does for the compiler.
+#
+# Round 19j evidence: /usr/bin/pkg-config on Tumbleweed is a SHELL SCRIPT
+# wrapper (symlinks to x86_64-suse-linux-gnu-pkg-config, which calls pkgconf
+# with a triplet PKG_CONFIG_LIBDIR for cross-compile setups). The wrapper
+# bare-execs `pkgconf`, so under uv's stripped build PATH it dies with
+# "WARNING: Found pkg-config '/usr/bin/pkg-config' but it failed when ran".
+# Prefer the bare /usr/bin/pkgconf binary (also pkg-config 1.x compatible),
+# which has zero PATH dependencies. Fall back to the wrapper only if the
+# pkgconf binary is missing for some reason.
 PKG_CONFIG_BIN=""
-for cand in /usr/bin/pkg-config /usr/bin/pkgconf; do
+for cand in /usr/bin/pkgconf /usr/bin/pkg-config; do
     if [ -x "$cand" ]; then
         PKG_CONFIG_BIN="$cand"
         break
