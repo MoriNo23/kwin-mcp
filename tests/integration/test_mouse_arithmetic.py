@@ -85,6 +85,15 @@ async def test_kcalc_two_plus_three_equals_five() -> None:
         # Give kcalc a moment to compute and update its display.
         await asyncio.sleep(0.3)
 
+        # Diagnostic: AT-SPI search for "5" before Ctrl+C splits keystroke
+        # routing failure (no match) from clipboard plumbing failure (match
+        # found yet wl-paste returns empty).
+        pre_ctrl_c_tree = await call_text(
+            client,
+            "find_ui_elements",
+            {"query": "5", "app_name": "kcalc"},
+        )
+
         # Copy the result to the clipboard via Ctrl+C (tests keyboard_key too).
         await call_text(client, "keyboard_key", {"key": "ctrl+c"})
         await asyncio.sleep(0.3)
@@ -94,5 +103,6 @@ async def test_kcalc_two_plus_three_equals_five() -> None:
         await call_text(client, "screenshot", {})
 
     assert clipboard.strip() == "5", (
-        f"kcalc display after 2+3= should be '5' (copied via Ctrl+C), got {clipboard!r}"
+        f"kcalc display after 2+3= should be '5' (copied via Ctrl+C), got {clipboard!r}\n"
+        f"Pre-Ctrl+C AT-SPI search for '5':\n{pre_ctrl_c_tree}"
     )

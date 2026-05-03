@@ -73,7 +73,16 @@ async def test_keyboard_type_reaches_kcalc_display() -> None:
         await call_text(client, "keyboard_type", {"text": KEYSTROKES})
         await asyncio.sleep(0.3)
 
-        # Copy the display value to the clipboard via Ctrl+C.
+        # Diagnostic: query the AT-SPI tree for the expected display value
+        # BEFORE Ctrl+C. If found, keystrokes reached the focused kcalc
+        # surface (so failure is in clipboard plumbing). If absent,
+        # keystrokes never landed (focus / routing bug).
+        pre_ctrl_c_tree = await call_text(
+            client,
+            "find_ui_elements",
+            {"query": EXPECTED_DISPLAY, "app_name": "kcalc"},
+        )
+
         await call_text(client, "keyboard_key", {"key": "ctrl+c"})
         await asyncio.sleep(0.3)
         clipboard = await call_text(client, "clipboard_get", {})
@@ -82,5 +91,6 @@ async def test_keyboard_type_reaches_kcalc_display() -> None:
 
     assert clipboard.strip() == EXPECTED_DISPLAY, (
         f"After click(1) + keyboard_type({KEYSTROKES!r}), kcalc display should "
-        f"be {EXPECTED_DISPLAY!r} (via Ctrl+C), got {clipboard!r}"
+        f"be {EXPECTED_DISPLAY!r} (via Ctrl+C), got {clipboard!r}\n"
+        f"Pre-Ctrl+C AT-SPI search for {EXPECTED_DISPLAY!r}:\n{pre_ctrl_c_tree}"
     )
