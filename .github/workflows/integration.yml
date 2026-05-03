@@ -41,6 +41,7 @@ jobs:
       XDG_RUNTIME_DIR: /tmp/xdg-runtime-root
       LIBGL_ALWAYS_SOFTWARE: "1"
       QT_QUICK_BACKEND: software
+      KWIN_MCP_DEBUG: "1"
     steps:
       - name: Prepare XDG_RUNTIME_DIR
         run: |
@@ -91,12 +92,31 @@ jobs:
       - name: Run integration tests
         run: uv run pytest tests/integration/ -v --junit-xml=report.xml
 
+      - name: Surface KWin debug logs on failure
+        if: failure()
+        run: |
+          echo "::group::KWin stderr capture"
+          for f in /tmp/kwin-mcp-kwin-*.log; do
+            [ -e "$f" ] || continue
+            echo "--- $f ---"
+            cat "$f"
+          done
+          echo "::endgroup::"
+
       - name: Upload pytest report
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: pytest-report-${{ matrix.distro }}
           path: report.xml
+          if-no-files-found: ignore
+
+      - name: Upload KWin debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kwin-debug-${{ matrix.distro }}
+          path: /tmp/kwin-mcp-kwin-*.log
           if-no-files-found: ignore
 
       - name: Upload screenshots on failure
