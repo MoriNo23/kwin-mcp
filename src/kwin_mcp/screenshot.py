@@ -36,6 +36,21 @@ def capture_screenshot_to_file(
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     output_path = output_dir / f"screenshot_{timestamp}.png"
 
+    # Try fast direct D-Bus capture first; fall back to spectacle CLI on
+    # D-Bus authorization / interface errors. spectacle 6 routes through
+    # xdg-desktop-portal which we disable in headless CI containers (it
+    # crashes KWin on activation), so spectacle hangs forever there.
+    # capture_frame_burst already uses this same pattern.
+    if dbus_address:
+        try:
+            return capture_screenshot_dbus(
+                dbus_address,
+                output_path,
+                include_cursor=include_cursor,
+            )
+        except dbus.DBusException:
+            pass
+
     _capture_via_spectacle(
         dbus_address,
         wayland_socket,
