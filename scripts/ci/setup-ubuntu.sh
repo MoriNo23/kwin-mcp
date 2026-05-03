@@ -22,7 +22,8 @@ apt-get install -y --no-install-recommends \
     libgl1-mesa-dri \
     libglvnd0 \
     libcap2-bin \
-    libei1
+    libei1 \
+    libeis1
 
 # Clipboard / input helpers
 apt-get install -y --no-install-recommends \
