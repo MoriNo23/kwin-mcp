@@ -83,7 +83,7 @@ async def test_kcalc_two_plus_three_equals_five() -> None:
             await asyncio.sleep(0.15)
 
         # Give kcalc a moment to compute and update its display.
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(1.0)
 
         # Diagnostic: AT-SPI search for "5" before Ctrl+C splits keystroke
         # routing failure (no match) from clipboard plumbing failure (match
@@ -96,7 +96,7 @@ async def test_kcalc_two_plus_three_equals_five() -> None:
 
         # Copy the result to the clipboard via Ctrl+C (tests keyboard_key too).
         await call_text(client, "keyboard_key", {"key": "ctrl+c"})
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(1.0)
         clipboard = await call_text(client, "clipboard_get", {})
 
         # Final screenshot for CI artifact (keep_screenshots=True on fixture).

@@ -71,7 +71,7 @@ async def test_keyboard_type_reaches_kcalc_display() -> None:
         await asyncio.sleep(0.2)
 
         await call_text(client, "keyboard_type", {"text": KEYSTROKES})
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(1.0)
 
         # Diagnostic: query the AT-SPI tree for the expected display value
         # BEFORE Ctrl+C. If found, keystrokes reached the focused kcalc
@@ -84,7 +84,7 @@ async def test_keyboard_type_reaches_kcalc_display() -> None:
         )
 
         await call_text(client, "keyboard_key", {"key": "ctrl+c"})
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(1.0)
         clipboard = await call_text(client, "clipboard_get", {})
 
         await call_text(client, "screenshot", {})
