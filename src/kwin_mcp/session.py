@@ -455,6 +455,13 @@ wait $KWIN_PID
             "XDG_CURRENT_DESKTOP": "KDE",
             "QT_LINUX_ACCESSIBILITY_ALWAYS_ON": "1",
             "QT_ACCESSIBILITY": "1",
+            # Force Qt's generic Unix platform theme. Without this, Qt detects
+            # XDG_CURRENT_DESKTOP=KDE and instantiates QKdeTheme, which crashes
+            # in QStyleHintsPrivate::update during init when kdeglobals defaults
+            # are absent (Fedora/Ubuntu kwin-wayland packages do not pull in
+            # plasma-workspace). Generic theme bypasses the QKdeTheme init path
+            # entirely. Test fixtures do not assert theme-derived properties.
+            "QT_QPA_PLATFORMTHEME": "generic",
             # Force dbus-daemon for the AT-SPI bus instead of dbus-broker.
             # dbus-broker with --scope=user reuses the host's existing AT-SPI bus,
             # breaking accessibility isolation. Verified as REQUIRED.
