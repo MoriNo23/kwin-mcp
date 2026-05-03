@@ -62,6 +62,11 @@ zypper --non-interactive install --no-recommends kcalc kate
 # next workflow step exits with `OCI runtime exec failed: exec: "sh": not found`.
 zypper --non-interactive install --no-recommends --force-resolution \
     diffutils gettext-tools coreutils
+# The force-resolution above also removes busybox / busybox-coreutils, which
+# on Tumbleweed minimal images owned the /usr/bin/bash symlink that the GNU
+# bash package didn't claim. Force-reinstall bash to put a real binary back
+# at /usr/bin/bash before the next workflow step's OCI exec resolves it.
+zypper --non-interactive install --force --no-recommends bash
 ln -sf /usr/bin/bash /bin/sh 2>/dev/null || true
 
 zypper --non-interactive install --no-recommends \
