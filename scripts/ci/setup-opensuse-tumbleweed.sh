@@ -144,18 +144,25 @@ if [ -n "${GITHUB_ENV:-}" ]; then
         if [ -n "$PKG_CONFIG_BIN" ]; then
             echo "PKG_CONFIG=$PKG_CONFIG_BIN"
         fi
-        # Round 19k: dbus-python's ninja link rule executes the bare-name
-        # `rm -f libdbus-gmain.a && /usr/bin/ar csrDT ...` shell command and
-        # dies with `/bin/sh: line 1: rm: command not found`. The setup-step
-        # PATH does include /usr/bin (verified by the gcc/PATH diagnostic),
-        # but uv's PEP 517 build subprocess on Tumbleweed somehow ends up
-        # without it. Re-export the full PATH explicitly so the next workflow
-        # step (uv sync) and any subprocess uv spawns inherit it. We cannot
-        # use $GITHUB_PATH (which only prepends) because /usr/bin is already
-        # there at workflow level -- the loss happens deeper, and only an
-        # explicit PATH= in $GITHUB_ENV is propagated through uv's env.
-        echo "PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:${PATH}"
     } >> "$GITHUB_ENV"
+fi
+
+# Round 19l: dbus-python's ninja link rule executes `rm -f libdbus-gmain.a &&
+# /usr/bin/ar csrDT ...`. /usr/bin/ar is absolute (we set $AR), but `rm` is
+# bare-named in meson's hardcoded static-link template -- meson exposes no
+# env-var override for it. The shell `/bin/sh` (= /usr/bin/bash here) needs
+# /usr/bin in PATH to resolve `rm`, but Round 19k proved that PATH= written
+# to $GITHUB_ENV is silently overridden: the runner reconstructs PATH for
+# every step from the system PATH plus the entries in $GITHUB_PATH, ignoring
+# any PATH= line in $GITHUB_ENV (cf. actions/toolkit#655 + the GITHUB_PATH
+# docs). Use $GITHUB_PATH instead. Duplicates with the existing PATH are
+# harmless (first-match-wins lookup), and uv's PEP 517 build subprocess
+# inherits the next step's PATH untouched -- which is how CC/AR/etc. via
+# $GITHUB_ENV reach meson configure even though PATH= did not.
+if [ -n "${GITHUB_PATH:-}" ]; then
+    for d in /sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/bin; do
+        echo "$d" >> "$GITHUB_PATH"
+    done
 fi
 
 # uv (Python package manager)
