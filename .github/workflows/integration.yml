@@ -71,6 +71,12 @@ jobs:
       # only thread startup chatter; KWin's qCDebug() sites stay silent
       # without QT_LOGGING_RULES.
       QT_LOGGING_RULES: "kwin*.debug=true"
+      # Qt 5.6+ auto-routes qCDebug to systemd journal via sd_journal_send
+      # whenever it detects journald, bypassing stderr. Round 19b proved
+      # this happens in our containers: KWIN_LOG captured only gdb thread
+      # chatter (~300B per test) despite QT_LOGGING_RULES being set. Force
+      # stderr so the wrapper's tee can actually see KWin's qCDebug output.
+      QT_FORCE_STDERR_LOGGING: "1"
     steps:
       - name: Prepare XDG_RUNTIME_DIR
         run: |
