@@ -103,6 +103,29 @@ zypper --non-interactive install --no-recommends \
 # loses /usr/bin from the subprocess PATH on this image. Propagate absolute
 # CC/CXX via $GITHUB_ENV so the next workflow step (uv sync) bypasses meson's
 # PATH lookup entirely and reaches the compiler by absolute path.
+#
+# Round 19i adds PKG_CONFIG. With the CC/CXX propagation in place pycairo's
+# meson run advanced to "Did not find pkg-config by name 'pkg-config'" -- the
+# same lost-/usr/bin path stripped pkgconf too. meson honors $PKG_CONFIG as
+# an absolute-path override (see meson.build/dependency('cairo')); pointing
+# it at the pkgconf-provided /usr/bin/pkg-config symlink bypasses the PATH
+# lookup the same way CC/CXX does for the compiler.
+PKG_CONFIG_BIN=""
+for cand in /usr/bin/pkg-config /usr/bin/pkgconf; do
+    if [ -x "$cand" ]; then
+        PKG_CONFIG_BIN="$cand"
+        break
+    fi
+done
+{
+    echo "::group::pkg-config diagnostic"
+    type pkg-config 2>&1 || true
+    type pkgconf 2>&1 || true
+    ls -la /usr/bin/pkg-config /usr/bin/pkgconf 2>&1 || true
+    echo "PKG_CONFIG_BIN=${PKG_CONFIG_BIN}"
+    echo "::endgroup::"
+} >&2
+
 if [ -n "${GITHUB_ENV:-}" ]; then
     {
         echo "CC=/usr/bin/gcc-15"
@@ -110,6 +133,9 @@ if [ -n "${GITHUB_ENV:-}" ]; then
         echo "AR=/usr/bin/ar"
         echo "RANLIB=/usr/bin/ranlib"
         echo "STRIP=/usr/bin/strip"
+        if [ -n "$PKG_CONFIG_BIN" ]; then
+            echo "PKG_CONFIG=$PKG_CONFIG_BIN"
+        fi
     } >> "$GITHUB_ENV"
 fi
 
