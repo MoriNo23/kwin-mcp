@@ -48,7 +48,7 @@ jobs:
             image: opensuse/tumbleweed:latest
             experimental: true
           - distro: ubuntu
-            image: ubuntu:26.04
+            image: invent-registry.kde.org/neon/docker-images/all:unstable
             experimental: true
     container:
       image: ${{ matrix.image }}
