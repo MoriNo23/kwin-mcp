@@ -20,6 +20,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
+from typing import cast
 
 from kwin_mcp.input import InputBackend, MouseButton
 from kwin_mcp.screenshot import capture_frame_burst, capture_screenshot_to_file
@@ -941,6 +942,146 @@ class AutomationEngine:
         self._get_session()
         resp = self._run_atspi("focus_window", app_name=app_name)
         return resp["result"]
+
+    # ── KWin scripting window tools ───────────────────────────────────────
+
+    def _kwin_script_dbus_address(self) -> str | None:
+        info = self._get_session().info
+        if info is None or not info.dbus_address:
+            return None
+        return info.dbus_address
+
+    @staticmethod
+    def _shape_window_entry(item: dict) -> dict:
+        return {
+            "id": item["id"],
+            "title": item["title"],
+            "app_id": item["appId"],
+            "geometry": {
+                "x": item["x"],
+                "y": item["y"],
+                "width": item["width"],
+                "height": item["height"],
+            },
+            "active": item["active"],
+        }
+
+    def window_list(self) -> str:
+        """Enumerate windows in the current session via KWin scripting."""
+        from kwin_mcp.window import JS_LIST_WINDOWS, KWinScriptingBackend
+
+        dbus_address = self._kwin_script_dbus_address()
+        if dbus_address is None:
+            return "Error: session has no D-Bus address"
+        backend = KWinScriptingBackend(dbus_address)
+        try:
+            result = backend.run_script(JS_LIST_WINDOWS, timeout=5.0)
+        except TimeoutError:
+            return "Error: timeout waiting for script result"
+        except RuntimeError as exc:
+            return f"Error: {exc}"
+        if not isinstance(result, list):
+            return f"Error: unexpected payload type {type(result).__name__}"
+        shaped = [self._shape_window_entry(cast("dict", item)) for item in result]
+        return json.dumps(shaped)
+
+    def active_window(self) -> str:
+        """Return the currently focused window via KWin scripting, or null."""
+        from kwin_mcp.window import JS_ACTIVE_WINDOW, KWinScriptingBackend
+
+        dbus_address = self._kwin_script_dbus_address()
+        if dbus_address is None:
+            return "Error: session has no D-Bus address"
+        backend = KWinScriptingBackend(dbus_address)
+        try:
+            result = backend.run_script(JS_ACTIVE_WINDOW, timeout=5.0)
+        except TimeoutError:
+            return "Error: timeout waiting for script result"
+        except RuntimeError as exc:
+            return f"Error: {exc}"
+        if result is None:
+            return json.dumps(None)
+        if not isinstance(result, dict):
+            return f"Error: unexpected payload type {type(result).__name__}"
+        return json.dumps(self._shape_window_entry(result))
+
+    def window_geometry(self, window_id: str) -> str:
+        """Return the frame geometry for the window with the given internalId."""
+        from kwin_mcp.window import JS_GEOMETRY_BY_ID, KWinScriptingBackend
+
+        dbus_address = self._kwin_script_dbus_address()
+        if dbus_address is None:
+            return "Error: session has no D-Bus address"
+        js = JS_GEOMETRY_BY_ID.replace("__WINDOW_ID__", window_id)
+        backend = KWinScriptingBackend(dbus_address)
+        try:
+            result = backend.run_script(js, timeout=5.0)
+        except TimeoutError:
+            return "Error: timeout waiting for script result"
+        except RuntimeError as exc:
+            return f"Error: {exc}"
+        if result is None:
+            return f"Error: window {window_id} not found"
+        if not isinstance(result, dict):
+            return f"Error: unexpected payload type {type(result).__name__}"
+        return json.dumps(result)
+
+    def _check_window_mutation_allowed(self) -> str | None:
+        """Return error string if mutation is blocked in the active session, else None."""
+        if isinstance(self._session, LiveSession):
+            return (
+                "Error: window mutation not supported in live session "
+                "(v1 safety). Use virtual session."
+            )
+        return None
+
+    def window_activate(self, window_id: str) -> str:
+        """Activate the window with the given internalId."""
+        blocked = self._check_window_mutation_allowed()
+        if blocked is not None:
+            return blocked
+        from kwin_mcp.window import JS_ACTIVATE_BY_ID, KWinScriptingBackend
+
+        dbus_address = self._kwin_script_dbus_address()
+        if dbus_address is None:
+            return "Error: session has no D-Bus address"
+        js = JS_ACTIVATE_BY_ID.replace("__WINDOW_ID__", window_id)
+        backend = KWinScriptingBackend(dbus_address)
+        try:
+            result = backend.run_script(js, timeout=5.0)
+        except TimeoutError:
+            return "Error: timeout waiting for script result"
+        except RuntimeError as exc:
+            return f"Error: {exc}"
+        if result == "OK":
+            return "OK"
+        if result == "not_found":
+            return f"Error: window {window_id} not found"
+        return f"Error: unexpected payload {result!r}"
+
+    def window_close(self, window_id: str) -> str:
+        """Close the window with the given internalId."""
+        blocked = self._check_window_mutation_allowed()
+        if blocked is not None:
+            return blocked
+        from kwin_mcp.window import JS_CLOSE_BY_ID, KWinScriptingBackend
+
+        dbus_address = self._kwin_script_dbus_address()
+        if dbus_address is None:
+            return "Error: session has no D-Bus address"
+        js = JS_CLOSE_BY_ID.replace("__WINDOW_ID__", window_id)
+        backend = KWinScriptingBackend(dbus_address)
+        try:
+            result = backend.run_script(js, timeout=5.0)
+        except TimeoutError:
+            return "Error: timeout waiting for script result"
+        except RuntimeError as exc:
+            return f"Error: {exc}"
+        if result == "OK":
+            return "OK"
+        if result == "not_found":
+            return f"Error: window {window_id} not found"
+        return f"Error: unexpected payload {result!r}"
 
     # ── D-Bus tools ───────────────────────────────────────────────────────
 

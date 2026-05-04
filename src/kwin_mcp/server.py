@@ -744,6 +744,81 @@ def focus_window(
     return _engine.focus_window(app_name=app_name)
 
 
+# ── KWin scripting window tools ─────────────────────────────────────────
+
+
+@mcp.tool()
+def window_list() -> str:
+    """List all windows in the current session via KWin scripting.
+
+    Returns a JSON array of objects with ``id``, ``title``, ``app_id``,
+    ``geometry`` (``x``, ``y``, ``width``, ``height``), and ``active``.
+    The ``id`` value is KWin's internalId and can be passed to
+    ``window_geometry``, ``window_activate``, and ``window_close``.
+    """
+    return _engine.window_list()
+
+
+@mcp.tool()
+def active_window() -> str:
+    """Return the currently focused window in the session.
+
+    Returns a JSON object with the same shape as one ``window_list`` entry,
+    or the JSON literal ``null`` when no window has focus.
+    """
+    return _engine.active_window()
+
+
+@mcp.tool()
+def window_geometry(
+    window_id: Annotated[
+        str,
+        Field(description="KWin internalId of the target window (from window_list)."),
+    ],
+) -> str:
+    """Return the frame geometry of a specific window.
+
+    Returns a JSON object with ``x``, ``y``, ``width``, ``height`` for the
+    window matching the given internalId, or an ``Error: ...`` string when
+    no such window exists.
+    """
+    return _engine.window_geometry(window_id=window_id)
+
+
+@mcp.tool()
+def window_activate(
+    window_id: Annotated[
+        str,
+        Field(description="KWin internalId of the target window (from window_list)."),
+    ],
+) -> str:
+    """Activate the window with the given internalId.
+
+    Returns the literal string ``"OK"`` on success, or an ``Error: ...``
+    string when the window cannot be found or KWin reports a failure.
+    In live sessions, this tool is read-only blocked for safety; use a
+    virtual session for window mutation.
+    """
+    return _engine.window_activate(window_id=window_id)
+
+
+@mcp.tool()
+def window_close(
+    window_id: Annotated[
+        str,
+        Field(description="KWin internalId of the target window (from window_list)."),
+    ],
+) -> str:
+    """Request the window with the given internalId to close.
+
+    Returns the literal string ``"OK"`` once the close request is dispatched,
+    or an ``Error: ...`` string when the window cannot be found or KWin
+    reports a failure. In live sessions, this tool is read-only blocked for
+    safety; use a virtual session for window mutation.
+    """
+    return _engine.window_close(window_id=window_id)
+
+
 # ── D-Bus tools ──────────────────────────────────────────────────────────
 
 

@@ -126,6 +126,7 @@ include = [
     "src/kwin_mcp/accessibility.py",
     "src/kwin_mcp/accessibility_worker.py",
     "src/kwin_mcp/server.py",
+    "src/kwin_mcp/window.py",
 ]
 [tool.ty.overrides.rules]
 unresolved-import = "ignore"

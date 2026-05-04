@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- 5 new window management tools using KWin scripting backend: `window_list`, `active_window`, `window_geometry`, `window_activate`, and `window_close`.
+- KWin scripting backend for window introspection and control, providing more reliable window data than AT-SPI2 for certain operations.
 - `dbus_call` MCP tool now accepts typed-JSON dicts (`{"type": "int32", "value": 42}`) alongside legacy dbus-send strings (`"int32:42"`); both shapes can mix freely in one `args` list. Container shapes supported: `array` (basic element types), `dict` (basic key + value types), `variant` (basic value type).
 - New module `kwin_mcp.dbus_args` exposing `parse_dbus_send_arg`, `parse_typed_arg`, `parse_arg`, and `to_dbus_send_string` (80 unit tests).
 
