@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - Replaced `subprocess.run(["dbus-send", …])` inside `dbus_call` with in-process `dbus.bus.BusConnection` + `dbus.Interface`, removing one fork+exec per call and surfacing structured `dbus.DBusException` instead of CLI exit codes.
+- Replaced per-call `subprocess.run([sys.executable, "-m", "kwin_mcp.accessibility", …])` for AT-SPI queries with a long-lived spawn-context `multiprocessing.Pool(processes=1)` worker. New module `kwin_mcp.accessibility_worker` is never imported by the parent process (CI guard 3 enforced); worker init validates `Atspi.get_desktop(0).get_child_count() >= 0` against the bus address. Cold start ≤ 1.5s, warm calls < 200ms (vs ~700ms per subprocess). Pool teardown protocol: `close → join 5s → terminate → join 2s → SIGKILL → join 1s` survives hung workers within 7s. External `SIGKILL` of the worker is recovered by lazy pool recreation on the next call.
 
 ### Fixed
 
