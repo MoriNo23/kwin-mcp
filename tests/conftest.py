@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from kwin_mcp.session import Session, SessionConfig, SessionInfo
+from kwin_mcp.session import Session, SessionConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from kwin_mcp.session import SessionInfo
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
