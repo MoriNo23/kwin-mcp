@@ -382,6 +382,7 @@ class AutomationEngine:
             output_dir=info.screenshot_dir,
             delays_ms=screenshot_after_ms,
             wayland_socket=info.wayland_socket,
+            screenshot_backend=info.screenshot_backend,
         )
 
         lines = [action_result, f"Captured {len(frames)} frames:"]
@@ -552,6 +553,7 @@ class AutomationEngine:
             wayland_socket=info.wayland_socket,
             include_cursor=include_cursor,
             output_dir=info.screenshot_dir,
+            screenshot_backend=info.screenshot_backend,
         )
         size_kb = path.stat().st_size / 1024
         return f"Screenshot saved: {path} ({size_kb:.1f} KB)"
