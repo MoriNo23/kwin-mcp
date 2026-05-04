@@ -1,0 +1,56 @@
+{
+  "active_plan": "/home/bhyoo/.local/share/opencode/worktree/de995745c5fbc81e6aa1f2dd8c312bfd3cba55a7/cosmic-wolf/.sisyphus/plans/archlinux-docker-harness.md",
+  "started_at": "2026-05-04T15:05:27.334Z",
+  "session_ids": [
+    "ses_20d16abefffe4B0pfom9b82eOW",
+    "ses_20bc5614cffesMiPZcXwx59NJa",
+    "ses_20bc4b744ffe5ICpvN69nvHoYu",
+    "ses_20bc05a46ffeiqZRc6Ii3h3Wx0"
+  ],
+  "session_origins": {
+    "ses_20d16abefffe4B0pfom9b82eOW": "direct",
+    "ses_20bc5614cffesMiPZcXwx59NJa": "appended",
+    "ses_20bc4b744ffe5ICpvN69nvHoYu": "appended",
+    "ses_20bc05a46ffeiqZRc6Ii3h3Wx0": "appended"
+  },
+  "plan_name": "archlinux-docker-harness",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Lock date-stamped tag for `manjarolinux/base` (single multi-arch base)",
+      "session_id": "ses_20c7549c0ffeZrbaKo8Sbl1ul7",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-04T15:14:33.489Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Write `docker/entrypoint.sh`",
+      "session_id": "ses_20c6eedacffeaS1pwi0lWY5VCP",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-04T15:21:06.494Z"
+    },
+    "todo:11": {
+      "task_key": "todo:11",
+      "task_label": "11",
+      "task_title": "Write `docs/docker-testing.md`",
+      "session_id": "ses_20bcdc25fffePVSWEQsoXLKiGV",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-05-04T18:17:44.115Z"
+    },
+    "todo:12": {
+      "task_key": "todo:12",
+      "task_label": "12",
+      "task_title": "Update `ROADMAP.md` with Arch Docker harness completion checkbox",
+      "session_id": "ses_20bc05a46ffeiqZRc6Ii3h3Wx0",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-04T18:28:25.280Z"
+    }
+  }
+}

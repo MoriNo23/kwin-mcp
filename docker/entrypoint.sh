@@ -41,7 +41,7 @@ fi
 
 WHEEL_BASENAME=$(basename "$wheel")
 WHEEL_SHA256=$(sha256sum "$wheel" | awk '{print $1}')
-KWIN_MCP_VERSION=$(/opt/kwinmcp-venv/bin/python -c "import kwin_mcp; print(kwin_mcp.__version__)")
+KWIN_MCP_VERSION=$(/opt/kwinmcp-venv/bin/python -c "from importlib.metadata import version; print(version('kwin-mcp'))")
 IMAGE_TAG="${KWIN_MCP_IMAGE_TAG:-unknown}"
 export WHEEL_BASENAME WHEEL_SHA256 KWIN_MCP_VERSION IMAGE_TAG
 

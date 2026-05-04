@@ -98,6 +98,20 @@ The primary verification tool is a lightweight QML application:
 
 *Note: If `qml6` fails in a specific environment, `python-pyqt6` is the approved fallback for launching the test UI.*
 
+## Package substitutions
+
+The Dockerfile's `pacman -S` list deviates from T6 spec where Manjaro repos differ from Arch:
+
+| T6 spec name | Actual installed | Reason |
+|--------------|------------------|--------|
+| dbus-python-common | python-dbus | Original name not in Manjaro 20260322 x86_64 repos; `python-dbus` provides Python D-Bus bindings there. |
+| (transitive) | dbus (explicit) | `dbus-daemon` binary required by `dbus-run-session`. |
+| (transitive via kwin) | qt6-declarative (explicit) | `qml6` launcher safety; redundant with `kwin` transitive runtime on current Manjaro packaging but defends against future repackaging. |
+
+Removed from earlier Dockerfile drafts (T6 explicit ban):
+- `base-devel`, `pkgconf` (no in-image compilation; wheel is pre-built by host)
+- `python-cairo` (not required by any kept hard dependency; verified via `pacman -Si`)
+
 ## Base image decision
 
 The harness uses a rolling-release base to match the latest KDE Plasma 6 developments.

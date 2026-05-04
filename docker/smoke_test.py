@@ -20,6 +20,8 @@ import sys
 import time
 from typing import Any
 
+from PIL import Image
+
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
 if SRC_DIR.exists():
@@ -52,6 +54,34 @@ def find_center(find_output: str, name: str) -> tuple[int, int]:
         f"element not found by name={name!r}\n"
         f"--- find_ui_elements output ---\n{find_output}"
     )
+
+
+def _find_topleft(find_output: str, name: str) -> tuple[int, int]:
+    for match in FIND_RE.finditer(find_output):
+        if match.group("name") == name:
+            return int(match.group("x")), int(match.group("y"))
+    raise AssertionError(f"element not found: {name!r}")
+
+
+def _screen_offset(png: pathlib.Path, tf_x: int, tf_y: int) -> tuple[int, int]:
+    img = Image.open(png).convert("RGBA")
+    iw, ih = img.size
+    data: bytes = img.tobytes()
+    x0, x1 = iw // 5, 4 * iw // 5
+    for sy in range(ih // 4, 3 * ih // 4):
+        run = 0
+        run_start = 0
+        for sx in range(x0, x1):
+            i = (sy * iw + sx) * 4
+            if data[i] == 255 and data[i + 1] == 255 and data[i + 2] == 255 and data[i + 3] == 255:
+                if run == 0:
+                    run_start = sx
+                run += 1
+                if run >= 20:
+                    return run_start - tf_x, sy - tf_y
+            else:
+                run = 0
+    return 0, 0
 
 
 SCREENSHOT_RE = re.compile(r"Screenshot saved: (?P<path>\S+\.png)")
@@ -106,16 +136,27 @@ def run_smoke(engine: AutomationEngine, summary: dict[str, Any]) -> None:
     bx, by = find_center(find_before, "Ping button")
     add_scenario(summary, "find_ping_button", f"center=({bx},{by})")
 
+    find_entry = engine.find_ui_elements(query="Smoke entry")
+    tf_x, tf_y = _find_topleft(find_entry, "Smoke entry")
+    ex, ey = find_center(find_entry, "Smoke entry")
+
     initial = copy_to_evidence(parse_screenshot_path(engine.screenshot()), "initial.png")
     initial_size = initial.stat().st_size
     assert initial_size > 1024, f"initial screenshot suspiciously small: {initial_size} bytes"
     initial_sha = sha256(initial)
     add_scenario(summary, "screenshot_initial", f"size={initial_size}", sha256=initial_sha)
 
-    engine.mouse_click(x=bx, y=by)
-    add_scenario(summary, "mouse_click_ping", f"mouse at ({bx},{by})")
+    off_x, off_y = _screen_offset(initial, tf_x, tf_y)
+    add_scenario(summary, "screen_offset", f"offset=({off_x},{off_y})")
 
+    engine.mouse_move(x=960, y=540)
     time.sleep(0.3)
+    engine.mouse_move(x=off_x + bx, y=off_y + by)
+    time.sleep(0.3)
+    engine.mouse_click(x=off_x + bx, y=off_y + by)
+    add_scenario(summary, "mouse_click_ping", f"mouse at ({off_x + bx},{off_y + by})")
+
+    time.sleep(1.5)
 
     post_click = copy_to_evidence(parse_screenshot_path(engine.screenshot()), "post-click.png")
     post_click_sha = sha256(post_click)
@@ -127,19 +168,17 @@ def run_smoke(engine: AutomationEngine, summary: dict[str, Any]) -> None:
         sha256=post_click_sha,
     )
 
-    find_entry = engine.find_ui_elements(query="Smoke entry")
-    ex, ey = find_center(find_entry, "Smoke entry")
     add_scenario(summary, "find_smoke_entry", f"center=({ex},{ey})")
 
-    engine.mouse_click(x=ex, y=ey)
-    add_scenario(summary, "focus_entry_field", f"mouse at ({ex},{ey})")
+    engine.mouse_click(x=off_x + ex, y=off_y + ey)
+    add_scenario(summary, "focus_entry_field", f"mouse at ({off_x + ex},{off_y + ey})")
 
-    time.sleep(0.2)
+    time.sleep(0.5)
 
     engine.keyboard_type("hello")
     add_scenario(summary, "keyboard_type", "typed text")
 
-    time.sleep(0.3)
+    time.sleep(1.5)
 
     post_typing = copy_to_evidence(parse_screenshot_path(engine.screenshot()), "post-typing.png")
     post_typing_sha = sha256(post_typing)

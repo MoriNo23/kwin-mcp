@@ -80,8 +80,13 @@ chmod 0777 "$REPO/.sisyphus/evidence/${distro}"
 # ---------------------------------------------------------------------------
 # Run container (forbidden-flag policy: see docker/runtime-contract.md)
 # ---------------------------------------------------------------------------
+dri_args=()
+[ -e /dev/dri/renderD128 ] && dri_args+=(--device /dev/dri/renderD128)
+[ -e /dev/dri/renderD129 ] && dri_args+=(--device /dev/dri/renderD129)
+
 echo "==> Running smoke test in container..."
 DOCKER_HOST=tcp://localhost:2375 docker run --rm \
+  "${dri_args[@]}" \
   -v "$REPO/dist:/wheels:ro" \
   -v "$REPO/docker/smoke_test.py:/opt/docker/smoke_test.py:ro" \
   -v "$REPO/docker/smoke_app.qml:/opt/docker/smoke_app.qml:ro" \
