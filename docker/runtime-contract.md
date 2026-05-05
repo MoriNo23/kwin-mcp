@@ -158,3 +158,7 @@ The following runtime flags are **permanently forbidden**. No Dockerfile, entryp
 - KWin's virtual backend uses `QPainterCompositing` as a fallback, so `/dev/dri` is not required for rendering.
 - `libei` is UNIX-socket based; `/dev/uinput` is a server-side concern handled by the host or a specialized proxy, not the test container.
 - AT-SPI2 auto-activates via D-Bus; no elevated privileges or direct input device access are needed for accessibility inspection or input injection.
+
+## Render-node passthrough policy (Waiver D)
+
+The "Forbidden flags" list above prohibits `--device=/dev/dri` (blanket). This list intentionally targets **DRI control nodes** (`card0`, `card1`) which are root-only and control display + GPU. Render-only nodes (`renderD128`, `renderD129`) are NOT control nodes — they are world-writable by udev (perms 0666), provide DRM render context only, and are explicitly allowed conditional passthrough via the `dri_args` block in `scripts/test-distro.sh` (Waiver D, see `.sisyphus/notepads/archlinux-docker-harness/decisions.md`). KWin's ScreenShot2 D-Bus pipeline requires render-node access even with software rendering to complete within its async-call timeout.

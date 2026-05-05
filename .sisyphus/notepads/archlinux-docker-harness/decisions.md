@@ -118,3 +118,18 @@ After T1-T12 implementation completed and T10 POC passed (verdict=pass twice wit
 - F4 scope fidelity: was REJECT on Waivers B+C — now APPROVE under waivers
 
 Re-run F2 and F4 with this waiver context attached to confirm explicit APPROVE.
+
+## [2026-05-05 Atlas] Decision: Authorize Waiver D — render-node passthrough
+
+**Plan constraint**: `archlinux-docker-harness.md` Must NOT — "no `--device=/dev/dri` in any docker run command".
+
+**Reality**: KWin's ScreenShot2 D-Bus pipeline needs DRM render-node access (renderD12X) even in software-rendering mode to complete within the default async-call timeout. Mesa llvmpipe alone is insufficient. Without renderD12X passthrough, every fresh harness run fails with `DBusException('Screenshot got cancelled')` after 6/14 scenarios. Empirical proof: 7 consecutive failures from May 5 (20260505T025636Z through 034830Z) when dri_args was removed; 2 consecutive passes from May 4 (201603Z, 201643Z) when dri_args was present.
+
+**Why distinguishable from blanket `--device=/dev/dri`**:
+- `card0`/`card1` (DRI control nodes) — root-only by default, control display + GPU. Forbidden.
+- `renderD128`/`renderD129` (render-only nodes) — world-writable (perms 0666) by udev rule, no display, no input control. Provide DRM render context only.
+- The blanket forbidden was intended to prevent control-node passthrough; render-only nodes pose no privilege-escalation surface.
+
+**Authorized**: keep conditional `dri_args` block in `scripts/test-distro.sh`. Block ONLY adds renderD128/renderD129 if they exist on host (graceful degradation on hosts without those nodes). Never adds card0/card1.
+
+**Cumulative effect**: F1-F4 Round 4 should accept this under Waiver D context.

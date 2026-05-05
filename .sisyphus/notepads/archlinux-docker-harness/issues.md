@@ -55,3 +55,19 @@ No issues yet. Tasks not started.
 **On user OK**: Mark F1, F2, F3, F4, Definition of Done items, and Final Checklist items 1-3. Optionally commit residual `.sisyphus/*` files as chore commit.
 
 **On user REJECT**: Identify rejected item, delegate fix, re-run affected reviewer.
+
+## [2026-05-05] Regression: 8d9b30c removed dri_args, broke fresh harness runs
+
+**State**: Commit `8d9b30c chore(docker): round-2 fixes per F1-F4 review` removed the conditional `dri_args` block from `scripts/test-distro.sh`. Subsequent fresh harness runs fail with `DBusException('Screenshot got cancelled')` after 6/14 scenarios.
+
+**Why F1-F4 Round 2/3 didn't catch it**:
+- F1: static plan-vs-repo check, no execution
+- F2: static analysis, no execution
+- F3: verified historical evidence (`20260504T201603Z`/`201643Z`) only; Phase D ("fresh idempotency run") was OPTIONAL and skipped
+- F4: static diff review, no execution
+
+The historical evidence was from PRE-`8d9b30c` code. Reviewers validated outdated artifacts.
+
+**Fix**: see `archlinux-docker-harness-regression.md` plan, R1.
+
+**Mitigation for future plans**: F3 Phase D MUST be mandatory, not optional, when reviewing any plan whose deliverable is an executable harness. Static-only review of historical evidence is insufficient.

@@ -82,8 +82,22 @@ chmod 0777 "$REPO/.sisyphus/evidence/${distro}"
 # ---------------------------------------------------------------------------
 # Run container (forbidden-flag policy: see docker/runtime-contract.md)
 # ---------------------------------------------------------------------------
+# Render-node passthrough (Waiver D, m0207 pattern):
+# Conditionally pass /dev/dri/renderD12{8,9} when present on host.
+# These are render-only nodes (no display, no input) — KWin's ScreenShot2
+# D-Bus pipeline needs them even in software-rendering mode to complete
+# within the default timeout. Without them, screenshot calls cancel mid-flight
+# (DBusException 'Screenshot got cancelled'). Distinguished from the blanket
+# DRI forbidden flag (see docker/runtime-contract.md 'Forbidden flags')
+# because we only mount specific user-accessible render nodes
+# (perms 0666 by udev), never card0/card1.
+dri_args=()
+[ -e /dev/dri/renderD128 ] && dri_args+=(--device /dev/dri/renderD128)
+[ -e /dev/dri/renderD129 ] && dri_args+=(--device /dev/dri/renderD129)
+
 echo "==> Running smoke test in container..."
 DOCKER_HOST=tcp://localhost:2375 docker run --rm \
+  "${dri_args[@]}" \
   -v "$REPO/dist:/wheels:ro" \
   -v "$REPO/docker/smoke_test.py:/opt/docker/smoke_test.py:ro" \
   -v "$REPO/docker/smoke_app.qml:/opt/docker/smoke_app.qml:ro" \
