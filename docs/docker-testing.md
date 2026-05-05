@@ -166,3 +166,58 @@ You can combine both flags to pause at a specific state and ensure the container
 ```bash
 scripts/test-distro.sh archlinux --pause-at=mouse_click_ping --keep
 ```
+
+## Terminal output
+Every smoke run ends with a 4-7 line summary block printed to standard output. This summary is designed for easy consumption by CI systems and developers, providing an immediate verdict and a path to the full evidence bundle without requiring manual inspection of log files.
+
+### Pass output
+When all smoke test tasks complete successfully, the summary block follows this template:
+
+```text
+==> Smoke summary: PASS
+==> Evidence: /evidence/20260505T120000Z
+==> Tasks passed: 14
+==> Screenshots: initial.png, post-click.png, post-typing.png
+```
+
+### Failure output
+If a smoke test assertion fails, the summary includes the error type and the specific reason for the failure. The `Error type` line is omitted if the failure does not have a specific classification.
+
+```text
+==> Smoke summary: FAIL
+==> Error type: assertion
+==> Reason: accessibility tree text did not change
+==> Evidence: /evidence/20260505T120000Z
+==> Tasks passed: 11
+==> Screenshots: initial.png, post-click.png
+==> See: summary.json, stdout.log, stderr.log
+```
+
+### Error output
+If the test environment fails to start, or if the summary file is missing or malformed, an ERROR summary is printed. This is also the fallback output for unexpected container exits.
+
+```text
+==> Smoke summary: ERROR
+==> Error type: RuntimeError
+==> Reason: failed to connect to session bus
+==> Evidence: /evidence/20260505T120000Z
+==> See: stdout.log, stderr.log
+```
+
+### Container vs host evidence path
+The evidence path printed in the terminal (e.g., `/evidence/20260505T120000Z`) is the internal container path. On the host machine, this directory is mapped to `.sisyphus/evidence/<distro>/<timestamp>/` via a bind mount. For example, an Arch Linux run's evidence can be found at:
+
+```text
+.sisyphus/evidence/archlinux/20260505T120000Z/
+```
+
+### Consuming summary in CI
+CI pipelines can use simple grep patterns to extract the test verdict or failure reason from the job logs:
+
+```bash
+# Extract the verdict
+grep -E '^==> Smoke summary:' smoke.log
+
+# Extract the failure reason
+grep '^==> Reason:' smoke.log
+```
