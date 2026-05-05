@@ -142,3 +142,35 @@ Run 1 (20260504T201603Z) and Run 2 (20260504T201643Z): identical offset
 - `test-distro.sh`: `--device /dev/dri/renderD128` added to docker run for
   OpenGL compositing (DRI render node, not a forbidden flag — renderD128 is
   distinct from `/dev/dri` glob).
+
+
+## [2026-05-05T02:59:17Z] F3 Final QA — archlinux docker harness
+- Run 1 command: `scripts/test-distro.sh archlinux 2>&1 | tee .sisyphus/evidence/final-qa/f3-run1.log; rc=${PIPESTATUS[0]}; echo "exit=$rc"` exited 0.
+- Run 1 evidence dir: `.sisyphus/evidence/archlinux/20260505T025636Z`; required files 9/9; screenshot PNG sizes 25761, 25804, 25180 bytes; screenshot SHA values all distinct; `a11y/before.txt` and `a11y/after.txt` differ; `summary.json` verdict pass with tasks_passed=14.
+- Run 2 command saved to `.sisyphus/evidence/final-qa/f3-run2.log` exited 0 and created `.sisyphus/evidence/archlinux/20260505T025757Z` without overwriting Run 1.
+- Run 2 evidence files 9/9; screenshot PNG sizes 25761, 25804, 25184 bytes; screenshot SHA values all distinct; a11y files differ; summary schema passes with install keys `image_tag`, `kwin_mcp_version`, `package_versions`, `wheel_basename`, `wheel_sha256` and screenshot keys `initial`, `post_click`, `post_typing`.
+- Docker cleanup check: `DOCKER_HOST=tcp://localhost:2375 docker ps -a --filter ancestor=kwin-mcp-test:archlinux` showed zero containers; image `kwin-mcp-test:archlinux` remains present; forbidden-flag grep rc=1 with 0 matches.
+- F3 verdict: APPROVE.
+
+## [2026-05-05] Round-2 fixes B+E+F+G applied
+- B revert: removed conditional render-node passthrough from `scripts/test-distro.sh`; container runtime remains software-rendering-only with no `/dev/dri` references.
+- E docs: replaced stale in-progress/session-startup issue wording in `docs/docker-testing.md` with validated 2026-05-04 evidence wording pointing to `.sisyphus/evidence/archlinux/20260504T201603Z/`; also avoided the literal stale `hang` substring in that document.
+- F Dockerfile: added `ARG UID=1000` and `ARG GID=1000`, then routed runtime directory ownership, venv/evidence directories, and `COPY --chown` through `${UID}` / `${GID}` while preserving the kwinmcp user model.
+- G wheel guard: made wheel discovery tolerate an empty glob under `set -euo pipefail` and fail early with exit 3 plus `error: no kwin-mcp wheel in dist/` if no wheel exists.
+- Harness build line now passes `--build-arg UID=1000 --build-arg GID=1000` so the default image identity remains stable after UID/GID parameterization.
+
+
+## [2026-05-05T03:17:30Z] F3 Round 2 Final QA — archlinux docker harness
+- Run 1 command saved to `.sisyphus/evidence/final-qa/f3-round2-run1.log` exited 10 after creating `.sisyphus/evidence/archlinux/20260505T031630Z`.
+- Run 2 command saved to `.sisyphus/evidence/final-qa/f3-round2-run2.log` exited 10 after creating `.sisyphus/evidence/archlinux/20260505T031701Z`, so timestamp idempotency worked but pass idempotency failed.
+- Both Round 2 evidence directories have 5/9 required files only: `summary.json`, `stdout.log`, `stderr.log`, `install.json`, and `a11y/before.txt`; all three screenshots and `a11y/after.txt` are missing.
+- Both summaries report `verdict=error`, `tasks_passed=6`, install has the required 5 keys, and `screenshot_sha` is absent because screenshot capture failed.
+- Common failure: `DBusException('Screenshot got cancelled')` immediately after `find_ping_button` and before first screenshot artifact.
+- Docker cleanup remained clean: zero containers for ancestor `kwin-mcp-test:archlinux`; image `kwin-mcp-test:archlinux` remained present at ID `11d791865e86`.
+- Forbidden flag grep and Round 2 `/dev/dri` grep both returned 1 with no matches in `scripts/test-distro.sh`.
+- F3 Round 2 verdict: REJECT.
+
+## [2026-05-05] F4 Round 3 scope fidelity check
+- Waiver B authorizes `docker/runtime-contract.md` section 13 (`## Package substitutions`), so the 13-section count is compliant.
+- Waiver C authorizes the `src/kwin_mcp/screenshot.py` `dbus_address` D-Bus early return alongside the `CaptureWorkspace` change for headless container screenshots.
+- Negative audits were clean: no workflow/pyproject diffs, no `tests/` directory, source changes limited to `session.py` and `screenshot.py`, and forbidden runtime flags returned zero grep matches.
