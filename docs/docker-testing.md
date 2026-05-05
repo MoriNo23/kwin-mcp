@@ -138,7 +138,7 @@ feh --auto-reload .sisyphus/evidence/manjaro/<timestamp>/screenshots/initial.png
 ```
 
 ### Inspect the running KWin/qml6 stack
-When a container is kept alive or paused, you can enter it to inspect the D-Bus bus, Wayland sockets, or process tree. The wrapper prints the deterministic container name (e.g., `kwin-mcp-test-manjaro-20260505T120000Z`).
+When a container is kept alive or paused, you can enter it to inspect the D-Bus bus, Wayland sockets, or process tree. The wrapper prints the deterministic container name (e.g., `kwin-mcp-smoke-manjaro-20260505T120000Z`).
 
 ```bash
 docker exec -it <container_name> bash

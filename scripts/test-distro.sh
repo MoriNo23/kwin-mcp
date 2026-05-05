@@ -4,9 +4,9 @@
 # Usage: scripts/test-distro.sh <distro>
 #   <distro>  One of: manjaro (more distros coming; add Dockerfile + SUPPORTED entry)
 #
-# Flow: uv build --wheel → docker build → docker run → exit with container exit code
-# Each distro uses a single Dockerfile (<distro>.Dockerfile) that resolves to the
-# correct architecture automatically (manjarolinux/base is multi-arch for manjaro).
+# Flow: uv build --wheel → docker pull/build → docker run → exit with container exit code
+# CI can set KWIN_MCP_TEST_IMAGE to reuse a prebuilt minimal test environment.
+# Local runs build docker/<distro>.Dockerfile when KWIN_MCP_TEST_IMAGE is unset.
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -75,15 +75,10 @@ done
 REPO=$(git rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$(realpath "$0")")")
 
 # ---------------------------------------------------------------------------
-# Single Dockerfile per distro slot (no host-arch branching)
-# manjarolinux/base is multi-arch (linux/amd64 + linux/arm64); Docker pulls
-# the correct architecture layer automatically; no host-machine probe needed.
+# Image selection
 # ---------------------------------------------------------------------------
+image="kwin-mcp-minimal-test-env:${distro}"
 dockerfile="${distro}.Dockerfile"
-if [ ! -f "$REPO/docker/$dockerfile" ]; then
-  echo "error: docker/$dockerfile not found" >&2
-  exit 2
-fi
 
 # ---------------------------------------------------------------------------
 # Build wheel (always rebuild — guarantees fresh code)
@@ -98,16 +93,27 @@ fi
 echo "==> Wheel: $wheel"
 
 # ---------------------------------------------------------------------------
-# Build image
+# Pull prebuilt image or build local image
 # ---------------------------------------------------------------------------
-echo "==> Building Docker image kwin-mcp-test:${distro}..."
-docker build \
-  --build-arg UID=1000 \
-  --build-arg GID=1000 \
-  -f "$REPO/docker/$dockerfile" \
-  -t "kwin-mcp-test:${distro}" \
-  "$REPO/docker"
-echo "==> Image built: kwin-mcp-test:${distro}"
+if [ -n "${KWIN_MCP_TEST_IMAGE:-}" ]; then
+  image="$KWIN_MCP_TEST_IMAGE"
+  echo "==> Pulling prebuilt Docker image $image..."
+  docker pull "$image"
+  echo "==> Image ready: $image"
+else
+  if [ ! -f "$REPO/docker/$dockerfile" ]; then
+    echo "error: docker/$dockerfile not found" >&2
+    exit 2
+  fi
+  echo "==> Building Docker image $image..."
+  docker build \
+    --build-arg UID=1000 \
+    --build-arg GID=1000 \
+    -f "$REPO/docker/$dockerfile" \
+    -t "$image" \
+    "$REPO/docker"
+  echo "==> Image built: $image"
+fi
 
 # ---------------------------------------------------------------------------
 # Prepare evidence directory (chmod 0777 so container uid 1000 can write)
@@ -132,7 +138,7 @@ dri_args=()
 [ -e /dev/dri/renderD129 ] && dri_args+=(--device /dev/dri/renderD129)
 
 echo "==> Running smoke test in container..."
-container_name="kwin-mcp-test-${distro}-$(date -u +%Y%m%dT%H%M%SZ)"
+container_name="kwin-mcp-smoke-${distro}-$(date -u +%Y%m%dT%H%M%SZ)"
 echo "==> Container name: $container_name"
 docker run --rm \
   --name "$container_name" \
@@ -144,7 +150,7 @@ docker run --rm \
   -v "$REPO/docker/smoke_app.qml:/opt/docker/smoke_app.qml:ro" \
   -v "$REPO/docker/print_summary.py:/opt/docker/print_summary.py:ro" \
   -v "$REPO/.sisyphus/evidence/${distro}:/evidence" \
-  "kwin-mcp-test:${distro}"
+  "$image"
 
 if [ "$keep" -eq 1 ]; then
   echo "==> Container kept alive: docker stop $container_name when done."
