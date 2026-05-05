@@ -28,24 +28,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libcairo2-dev libgirepository-2.0-dev libdbus-1-dev pkg-config
 
-      - name: Provision virtual DRM render node (vkms)
+      - name: Provision virtual DRM render node (vkms + vgem)
         # KWin's ScreenShot2 D-Bus pipeline needs a DRM render node even in
         # software-rendering mode (see docker/runtime-contract.md). GitHub-
-        # hosted runners have no GPU, so we load the in-kernel vkms (Virtual
-        # KMS) module to expose /dev/dri/renderD128. Azure runner kernels
-        # ship vkms only via linux-modules-extra-<kver> — install that first.
+        # hosted runners have no GPU, so we load two in-kernel virtual DRM
+        # drivers: vkms (Virtual KMS — provides display/modeset surface) and
+        # vgem (Virtual GEM — render-only driver that actually exposes
+        # /dev/dri/renderD128). vkms alone only creates control nodes
+        # (cardN), not render nodes. Azure runner kernels ship both modules
+        # only via linux-modules-extra-<kver>, install that first.
+        # `udevadm settle` waits for the kernel to publish the device nodes.
         # The wrapper's dri_args block then mounts the node conditionally;
         # perms are normalised to 0666 to match the Manjaro udev rule the
         # harness was designed against.
         run: |
           sudo apt-get install -y "linux-modules-extra-$(uname -r)"
           sudo modprobe vkms
-          for i in 1 2 3 4 5 6 7 8 9 10; do
-            [ -e /dev/dri/renderD128 ] && break
-            sleep 0.5
-          done
+          sudo modprobe vgem
+          sudo udevadm settle
           ls -la /dev/dri/
           sudo chmod 0666 /dev/dri/renderD* 2>/dev/null || true
+          if [ ! -e /dev/dri/renderD128 ]; then
+            echo "::error::No DRM render node was created by vkms+vgem; ScreenShot2 will fail." >&2
+            exit 1
+          fi
 
       - name: Run smoke harness
         env:
