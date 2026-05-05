@@ -826,7 +826,7 @@ Max Concurrent: 5 (Wave 1) | 4 (Wave 2)
   - Files: `docs/docker-testing.md`
   - Pre-commit: `grep -q '## Quick Start' docs/docker-testing.md`
 
-- [ ] 12. Update `ROADMAP.md` with Arch Docker harness completion checkbox
+- [x] 12. Update `ROADMAP.md` with Arch Docker harness completion checkbox
 
   **What to do**:
   - Read current `ROADMAP.md` to find the appropriate milestone/section (likely a "Testing" or "Tooling" or "CI" subsection — confirm by reading the file)
@@ -1402,7 +1402,7 @@ PYEOF
   - Files: `docker/smoke_test.py`
   - Pre-commit: `python -m py_compile docker/smoke_test.py && uv run ruff check docker/smoke_test.py`
 
-- [ ] 10. End-to-end POC: run `scripts/test-distro.sh archlinux`, debug, iterate to green
+- [x] 10. End-to-end POC: run `scripts/test-distro.sh archlinux`, debug, iterate to green
 
   **What to do**:
   - Goal: prove the assembled harness ACTUALLY runs from a clean checkout. This is the proof Metis demanded — assumptions become verified facts here.

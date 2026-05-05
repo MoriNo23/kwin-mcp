@@ -81,3 +81,64 @@
 - Change C: kded6 + kglobalacceld auto-start in wrapper at session.py:~357
 - Diff size: 9 + / 0 -
 - ruff PASS, py_compile PASS
+
+## [2026-05-04T20:16:03Z] T10 — Archlinux smoke test end-to-end (POC passes)
+
+### Root cause: AT-SPI CoordType.SCREEN returns window-local coords under Qt/Wayland
+AT-SPI `get_position(CoordType.SCREEN)` on Qt/Wayland returns coordinates
+relative to the window's content origin (0,0), NOT screen-absolute coords.
+This is a known Qt/Wayland limitation: Wayland windows don't expose their own
+screen position. All elements reported at e.g. (50, 46), (90, 82), (160, 58)
+are window-local, not screen coords that EIS pointer injection needs.
+
+### Fix: screenshot-based screen offset detection
+KWin virtual session places the 320x180 QML window centered on the 1920x1080
+virtual display. The screen offset is computed at runtime by:
+1. Taking the initial screenshot after app launch.
+2. Scanning the middle horizontal band for the first run of 20+ consecutive
+   pure-white pixels (255,255,255,255) — the QML TextField's background.
+3. Subtracting the AT-SPI-reported TextField local position (tf_x, tf_y) from
+
+## [2026-05-05T00:00:00Z] T12 — ROADMAP multi-distro harness note
+- Added `### M13: Multi-distro test harness ✅` to ROADMAP.md.
+- Kept the Arch entry marked complete and linked it to `docs/docker-testing.md`.
+- Deferred Ubuntu, Debian, Fedora, and openSUSE as explicit unchecked future distro smoke-harness items.
+   the found screen position to get `(off_x, off_y)`.
+4. Adding this offset to every subsequent AT-SPI coordinate before EIS injection.
+
+Measured offset: (801, 470). Theoretical center: (800, 468). The 1-2px
+difference comes from widget border / anti-aliasing.
+
+### PIL pixel access: use tobytes(), not load()
+`img.load()` returns a `PixelAccess` object; subscripting it with `px[x,y]`
+returns an int/tuple depending on mode, and `ty` reports type errors.
+Use `img.tobytes()` (returns plain `bytes`) and index as
+`data[(sy * iw + sx) * 4 + channel]` — fully type-safe.
+
+### sleep timing that works
+- 1.5 s after Ping button click (button handler updates Status text)
+- 0.3 s warm-up mouse_move before click (lets compositor track pointer)
+- 0.5 s after focusing entry field
+- 1.5 s after keyboard_type (text rendered into entry)
+
+### Evidence shape (both runs)
+- verdict: pass
+- tasks_passed: 14
+- 3 distinct screenshot SHAs per run
+- a11y diff: "Smoke entry" gains `focused`; "Status text" width 29→37px
+- install.json: 5 keys (wheel_basename, wheel_sha256, kwin_mcp_version,
+  package_versions, image_tag)
+
+### Idempotency confirmed
+Run 1 (20260504T201603Z) and Run 2 (20260504T201643Z): identical offset
+(801, 470), identical initial SHA (0a20c197…), both verdict=pass.
+
+### Other fixes bundled in C3
+- `session.py`: removed KDE_FULL_SESSION/KDE_SESSION_VERSION; added
+  LIBGL_ALWAYS_SOFTWARE=1 + GALLIUM_DRIVER=llvmpipe for software GL in
+  containers without GPU; non-blocking select.select() loop for kwin socket.
+- `screenshot.py`: CaptureActiveScreen → CaptureWorkspace (works without
+  an active window focus in virtual sessions).
+- `test-distro.sh`: `--device /dev/dri/renderD128` added to docker run for
+  OpenGL compositing (DRI render node, not a forbidden flag — renderD128 is
+  distinct from `/dev/dri` glob).
