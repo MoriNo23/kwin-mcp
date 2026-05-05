@@ -28,6 +28,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libcairo2-dev libgirepository-2.0-dev libdbus-1-dev pkg-config
 
+      - name: Provision virtual DRM render node (vkms)
+        # KWin's ScreenShot2 D-Bus pipeline needs a DRM render node even in
+        # software-rendering mode (see docker/runtime-contract.md). GitHub-
+        # hosted runners have no GPU, so we load the in-kernel vkms (Virtual
+        # KMS) module to expose /dev/dri/renderD128. The wrapper's dri_args
+        # block then mounts it conditionally; perms are normalised to 0666 to
+        # match the Manjaro udev rule the harness was designed against.
+        run: |
+          sudo modprobe vkms || { echo "vkms unavailable on this runner kernel"; exit 1; }
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            [ -e /dev/dri/renderD128 ] && break
+            sleep 0.5
+          done
+          ls -la /dev/dri/ || true
+          sudo chmod 0666 /dev/dri/renderD* 2>/dev/null || true
+
       - name: Run smoke harness
         env:
           # Use the runner's default unix socket; override the wrapper's
