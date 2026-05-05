@@ -6,7 +6,6 @@ name: Docs & SEO Review
 # when the detected changes do not warrant a documentation review.
 on:
   pull_request:
-    branches: [main]
     paths:
       - "src/kwin_mcp/**"
       - "pyproject.toml"
