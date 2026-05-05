@@ -32,16 +32,19 @@ jobs:
         # KWin's ScreenShot2 D-Bus pipeline needs a DRM render node even in
         # software-rendering mode (see docker/runtime-contract.md). GitHub-
         # hosted runners have no GPU, so we load the in-kernel vkms (Virtual
-        # KMS) module to expose /dev/dri/renderD128. The wrapper's dri_args
-        # block then mounts it conditionally; perms are normalised to 0666 to
-        # match the Manjaro udev rule the harness was designed against.
+        # KMS) module to expose /dev/dri/renderD128. Azure runner kernels
+        # ship vkms only via linux-modules-extra-<kver> — install that first.
+        # The wrapper's dri_args block then mounts the node conditionally;
+        # perms are normalised to 0666 to match the Manjaro udev rule the
+        # harness was designed against.
         run: |
-          sudo modprobe vkms || { echo "vkms unavailable on this runner kernel"; exit 1; }
+          sudo apt-get install -y "linux-modules-extra-$(uname -r)"
+          sudo modprobe vkms
           for i in 1 2 3 4 5 6 7 8 9 10; do
             [ -e /dev/dri/renderD128 ] && break
             sleep 0.5
           done
-          ls -la /dev/dri/ || true
+          ls -la /dev/dri/
           sudo chmod 0666 /dev/dri/renderD* 2>/dev/null || true
 
       - name: Run smoke harness
