@@ -432,7 +432,6 @@ wait $KWIN_PID
             # tries to open /dev/dri hardware, segfaults in containers with no GPU.
             "LIBGL_ALWAYS_SOFTWARE": "1",
             "GALLIUM_DRIVER": "llvmpipe",
-
         }
         # Remove host display references to avoid kwin connecting to host
         env.pop("WAYLAND_DISPLAY", None)
