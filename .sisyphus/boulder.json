@@ -1,95 +1,21 @@
 {
-  "active_plan": "/home/bhyoo/.local/share/opencode/worktree/de995745c5fbc81e6aa1f2dd8c312bfd3cba55a7/cosmic-wolf/.sisyphus/plans/archlinux-docker-harness.md",
-  "started_at": "2026-05-04T15:05:27.334Z",
+  "active_plan": "/home/bhyoo/.local/share/opencode/worktree/de995745c5fbc81e6aa1f2dd8c312bfd3cba55a7/cosmic-wolf/.sisyphus/plans/archlinux-docker-harness-regression.md",
+  "started_at": "2026-05-05T04:10:22.024Z",
   "session_ids": [
     "ses_20d16abefffe4B0pfom9b82eOW",
-    "ses_20bc5614cffesMiPZcXwx59NJa",
-    "ses_20bc4b744ffe5ICpvN69nvHoYu",
-    "ses_20bc05a46ffeiqZRc6Ii3h3Wx0",
-    "ses_209f178d6ffeK3tTOEHGz58CkN",
-    "ses_209f0da0effeWH09eQVYAPk3Y1",
-    "ses_209f036a8ffd4hDX7CBqJiyNXl",
-    "ses_209ef836dffez60FR8YE1xJs9I",
-    "ses_209deb1ffffeD3V6l73gMMu0Xy",
-    "ses_209de493effe7y6wyypvO4LbdR",
-    "ses_209ddd197ffedPAx09ba22gIvy",
-    "ses_209dd2a19ffeHdvVtrpwoyxjX4",
-    "ses_209d57370ffeCgNU0GPtucRcCV",
-    "ses_209d4fe40ffegD17saJaWnlVGq",
-    "ses_209d47e65ffeM4BAvVg9QuUs2D",
-    "ses_209d3d515fferhEjF9GIGseC61",
-    "ses_209ce04d9ffeyNuCg0KSVSrAhv",
-    "ses_209c940f4ffeUTNcEEXiWzzB9O",
-    "ses_209c8c5c7ffe16LTd7TLMe2mac"
+    "ses_20996d818ffe0HywVWpnsQW6yK",
+    "ses_2099649b5ffeCZJ24oJR2MraRt",
+    "ses_20995bf53ffeRIe4dBsNIwmCGl",
+    "ses_20995396bffd6P5MjFGK1Vd78p"
   ],
   "session_origins": {
     "ses_20d16abefffe4B0pfom9b82eOW": "direct",
-    "ses_20bc5614cffesMiPZcXwx59NJa": "appended",
-    "ses_20bc4b744ffe5ICpvN69nvHoYu": "appended",
-    "ses_20bc05a46ffeiqZRc6Ii3h3Wx0": "appended",
-    "ses_209f178d6ffeK3tTOEHGz58CkN": "appended",
-    "ses_209f0da0effeWH09eQVYAPk3Y1": "appended",
-    "ses_209f036a8ffd4hDX7CBqJiyNXl": "appended",
-    "ses_209ef836dffez60FR8YE1xJs9I": "appended",
-    "ses_209deb1ffffeD3V6l73gMMu0Xy": "appended",
-    "ses_209de493effe7y6wyypvO4LbdR": "appended",
-    "ses_209ddd197ffedPAx09ba22gIvy": "appended",
-    "ses_209dd2a19ffeHdvVtrpwoyxjX4": "appended",
-    "ses_209d57370ffeCgNU0GPtucRcCV": "appended",
-    "ses_209d4fe40ffegD17saJaWnlVGq": "appended",
-    "ses_209d47e65ffeM4BAvVg9QuUs2D": "appended",
-    "ses_209d3d515fferhEjF9GIGseC61": "appended",
-    "ses_209ce04d9ffeyNuCg0KSVSrAhv": "appended",
-    "ses_209c940f4ffeUTNcEEXiWzzB9O": "appended",
-    "ses_209c8c5c7ffe16LTd7TLMe2mac": "appended"
+    "ses_20996d818ffe0HywVWpnsQW6yK": "appended",
+    "ses_2099649b5ffeCZJ24oJR2MraRt": "appended",
+    "ses_20995bf53ffeRIe4dBsNIwmCGl": "appended",
+    "ses_20995396bffd6P5MjFGK1Vd78p": "appended"
   },
-  "plan_name": "archlinux-docker-harness",
+  "plan_name": "archlinux-docker-harness-regression",
   "agent": "atlas",
-  "task_sessions": {
-    "todo:1": {
-      "task_key": "todo:1",
-      "task_label": "1",
-      "task_title": "Lock date-stamped tag for `manjarolinux/base` (single multi-arch base)",
-      "session_id": "ses_20c7549c0ffeZrbaKo8Sbl1ul7",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-05-04T15:14:33.489Z"
-    },
-    "todo:7": {
-      "task_key": "todo:7",
-      "task_label": "7",
-      "task_title": "Write `docker/entrypoint.sh`",
-      "session_id": "ses_20c6eedacffeaS1pwi0lWY5VCP",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-05-04T15:21:06.494Z"
-    },
-    "todo:11": {
-      "task_key": "todo:11",
-      "task_label": "11",
-      "task_title": "Write `docs/docker-testing.md`",
-      "session_id": "ses_20bcdc25fffePVSWEQsoXLKiGV",
-      "agent": "Sisyphus-Junior",
-      "category": "writing",
-      "updated_at": "2026-05-04T18:17:44.115Z"
-    },
-    "todo:12": {
-      "task_key": "todo:12",
-      "task_label": "12",
-      "task_title": "Update `ROADMAP.md` with Arch Docker harness completion checkbox",
-      "session_id": "ses_20b54ddc4ffeZcXac6k3GSRJQI",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-04T20:26:35.735Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "**Plan Compliance Audit** — `oracle`",
-      "session_id": "ses_209c8c5c7ffe16LTd7TLMe2mac",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-05-05T03:40:59.014Z"
-    }
-  }
+  "task_sessions": {}
 }
