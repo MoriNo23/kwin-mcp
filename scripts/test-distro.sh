@@ -2,15 +2,15 @@
 # scripts/test-distro.sh — Host wrapper for kwin-mcp Docker smoke harness.
 #
 # Usage: scripts/test-distro.sh <distro>
-#   <distro>  One of: archlinux (more distros coming; add Dockerfile + SUPPORTED entry)
+#   <distro>  One of: manjaro (more distros coming; add Dockerfile + SUPPORTED entry)
 #
 # Flow: uv build --wheel → docker build → docker run → exit with container exit code
 # Each distro uses a single Dockerfile (<distro>.Dockerfile) that resolves to the
-# correct architecture automatically (manjarolinux/base is multi-arch for archlinux).
+# correct architecture automatically (manjarolinux/base is multi-arch for manjaro).
 set -euo pipefail
 IFS=$'\n\t'
 
-SUPPORTED=(archlinux)
+SUPPORTED=(manjaro)
 PAUSE_STEPS=(launch_app screenshot_initial mouse_click_ping keyboard_type screenshot_post_typing)
 PAUSE_STEPS_DISPLAY=$(printf '%s ' "${PAUSE_STEPS[@]}")
 PAUSE_STEPS_DISPLAY=${PAUSE_STEPS_DISPLAY% }

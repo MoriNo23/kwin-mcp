@@ -15,7 +15,7 @@ See [`runtime-contract.md`](runtime-contract.md) for the cross-distro contract: 
 ## Running
 
 ```bash
-scripts/test-distro.sh archlinux
+scripts/test-distro.sh manjaro
 ```
 
 Evidence is written to `.sisyphus/evidence/<distro>/<timestamp>/`.

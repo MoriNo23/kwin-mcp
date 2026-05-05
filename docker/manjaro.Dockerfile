@@ -1,8 +1,8 @@
-# docker/archlinux.Dockerfile - Arch-family test image (multi-arch).
+# docker/manjaro.Dockerfile - Manjaro-based test image (multi-arch, Arch family).
 # FROM line uses manjarolinux/base because the official archlinux:base is
 # amd64-only on Docker Hub; Manjaro ships archlinux-keyring + manjaro-keyring,
 # is pacman-based, and is multi-arch (linux/amd64 + linux/arm64). One Dockerfile
-# therefore covers both architectures from the user-facing 'archlinux' slot.
+# therefore covers both architectures from the user-facing 'manjaro' slot.
 FROM manjarolinux/base:20260322
 
 ARG UID=1000

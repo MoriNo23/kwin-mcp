@@ -15,7 +15,7 @@ By combining these isolation layers, the harness provides a robust and safe envi
 This harness is designed for local developer verification and is not a replacement for full CI workflows. By running tests in a containerized environment, developers can catch distribution-specific regressions without needing to maintain multiple physical or virtual machines. The harness provides a high degree of isolation, ensuring that the host system remains unaffected by the test execution. It does not currently handle image publishing or automated registry management, as those tasks are deferred to future development phases.
 
 ## Quick Start
-To run the smoke test for Arch Linux via `scripts/test-distro.sh archlinux`, ensure you have the following prerequisites met on your host machine:
+To run the smoke test for Manjaro via `scripts/test-distro.sh manjaro`, ensure you have the following prerequisites met on your host machine:
 
 ### Prerequisites
 - **Docker Daemon**: The Docker service must be running and accessible on your host. You can check this by running `docker ps`.
@@ -27,7 +27,7 @@ To run the smoke test for Arch Linux via `scripts/test-distro.sh archlinux`, ens
 Execute the following command from the repository root to start the test:
 
 ```bash
-scripts/test-distro.sh archlinux
+scripts/test-distro.sh manjaro
 ```
 
 The script will automatically build the local wheel, create a test image, and run the containerized smoke test. All logs and artifacts will be written to the evidence directory upon completion, allowing you to inspect the results.
@@ -73,12 +73,12 @@ To add support for a new Linux distribution to the harness, follow this systemat
 5. **Roadmap**: Add a corresponding entry to the `ROADMAP.md` to track the distribution's support status and mark it as completed once verified.
 
 ## Supported distros
-- **archlinux**: The primary test target and development environment. It uses `manjarolinux/base` as the base image to provide multi-arch support while maintaining full `pacman` and Arch-family compatibility. This ensures that the latest KDE Plasma 6 packages are available for testing, which is critical for validating the automation engine against the most recent compositor updates.
+- **manjaro**: The primary test target and development environment. It uses `manjarolinux/base` as the base image to provide multi-arch support while maintaining full `pacman` and Arch-family compatibility. This ensures that the latest KDE Plasma 6 packages are available for testing, which is critical for validating the automation engine against the most recent compositor updates.
 
 Note that support for other major distributions such as Ubuntu, Debian, Fedora, and openSUSE is planned for future milestones but is not yet implemented. These will be added as the project matures and the runtime contract is further refined to handle different init systems, package managers, and library versions. Each new distribution will require its own Dockerfile and validation cycle to ensure consistent behavior across the entire test suite.
 
 ## Architecture
-The harness is designed to support both `amd64` and `arm64` architectures using a single multi-arch base image. The Dockerfile filename `docker/archlinux.Dockerfile` corresponds to the user-facing distro family slot used in the test script. This design allows for a unified testing interface regardless of the underlying hardware, simplifying the development and maintenance of the test suite.
+The harness is designed to support both `amd64` and `arm64` architectures using a single multi-arch base image. The Dockerfile filename `docker/manjaro.Dockerfile` corresponds to the user-facing distro family slot used in the test script. This design allows for a unified testing interface regardless of the underlying hardware, simplifying the development and maintenance of the test suite.
 
 The `FROM` instruction in the Dockerfile points to `manjarolinux/base:20260322` because the official Arch Linux image on Docker Hub is currently limited to `amd64`. Manjaro provides a compatible rolling-release environment with multi-arch support, ensuring that the harness can run on both traditional servers and ARM-based development machines. The use of date-tags for the base image ensures that builds are reproducible and not subject to unexpected breakages from upstream updates.
 
@@ -89,15 +89,15 @@ A key architectural requirement is the removal of file capabilities from the KWi
 - **No Elevated Privileges**: The runtime contract enforces that the container runs without elevated Docker privileges, host-device passthrough, or special kernel capability grants. This ensures that the tests run in a secure and restricted environment, mirroring the constraints of a typical user session.
 - **Local Execution**: Integration with GitHub Actions is currently deferred to a follow-up plan. The harness is optimized for local developer workflows and manual verification of updates before they are committed.
 - **Registry Management**: Registry publishing (e.g., `GHCR`) is currently out of scope and not supported by the current scripts. The focus remains on local image builds and execution.
-- **Validated Arch Linux Path**: End-to-end Arch Linux harness validation passed on 2026-05-04; see `.sisyphus/evidence/archlinux/20260504T201603Z/` for the canonical evidence bundle. Continue using that evidence layout when comparing future local runs.
+- **Validated Manjaro Path**: End-to-end Manjaro harness validation passed on 2026-05-04; see `.sisyphus/evidence/manjaro/20260504T201603Z/` for the canonical evidence bundle. Continue using that evidence layout when comparing future local runs.
 
 ## Troubleshooting
 If the test harness fails to execute or the smoke test does not complete, check the following common failure modes and their respective resolutions:
 
 - **Docker Daemon**: Ensure the Docker daemon is running and accessible on your host. If you are using a remote Docker host, ensure the `DOCKER_HOST` environment variable is correctly set. You can verify the connection by running `docker info`.
 - **Missing Dependencies**: Verify that `uv` is installed on the host, as it is required to build the project wheel before it can be mounted into the container. The script will fail early if the `uv` command is not found in your `PATH`.
-- **Base Image Availability**: In rare cases, the pinned `manjarolinux/base:20260322` date-tag may no longer be pullable from Docker Hub due to registry garbage collection or tag rotation. If this occurs, you will see a "manifest not found" error during the image build phase. To fix this, visit the [Manjaro Docker Hub page](https://hub.docker.com/r/manjarolinux/base/tags) to find a more recent date-tag and update the `FROM` line in `docker/archlinux.Dockerfile`.
-- **Session Startup Failure**: If the smoke test exits during session startup, inspect the latest evidence directory first, then compare it with the validated 2026-05-04 run at `.sisyphus/evidence/archlinux/20260504T201603Z/`. The most useful diagnostic artifact is `stderr.log`, followed by `summary.json` and the presence or absence of generated screenshots.
+- **Base Image Availability**: In rare cases, the pinned `manjarolinux/base:20260322` date-tag may no longer be pullable from Docker Hub due to registry garbage collection or tag rotation. If this occurs, you will see a "manifest not found" error during the image build phase. To fix this, visit the [Manjaro Docker Hub page](https://hub.docker.com/r/manjarolinux/base/tags) to find a more recent date-tag and update the `FROM` line in `docker/manjaro.Dockerfile`.
+- **Session Startup Failure**: If the smoke test exits during session startup, inspect the latest evidence directory first, then compare it with the validated 2026-05-04 run at `.sisyphus/evidence/manjaro/20260504T201603Z/`. The most useful diagnostic artifact is `stderr.log`, followed by `summary.json` and the presence or absence of generated screenshots.
 
 ## Debugging
 The test harness provides flags to pause execution or keep the container alive for manual inspection of the virtual environment.
@@ -106,13 +106,13 @@ The test harness provides flags to pause execution or keep the container alive f
 Use `--pause-at=<step>` to halt the smoke test after a specific milestone. The container will wait until you signal it to continue.
 
 ```bash
-scripts/test-distro.sh archlinux --pause-at=screenshot_initial
+scripts/test-distro.sh manjaro --pause-at=screenshot_initial
 ```
 
 Valid steps are: `launch_app`, `screenshot_initial`, `mouse_click_ping`, `keyboard_type`, and `screenshot_post_typing`. When paused, the stdout will show `paused at <step>`. To resume, touch the `.continue` file in the active evidence directory:
 
 ```bash
-touch .sisyphus/evidence/archlinux/<timestamp>/.continue
+touch .sisyphus/evidence/manjaro/<timestamp>/.continue
 ```
 
 The test will then print `resumed from <step>` and proceed.
@@ -121,7 +121,7 @@ The test will then print `resumed from <step>` and proceed.
 Use `--keep` to prevent the container from exiting after the smoke test completes, regardless of the verdict.
 
 ```bash
-scripts/test-distro.sh archlinux --keep
+scripts/test-distro.sh manjaro --keep
 ```
 
 The entrypoint will print `Container kept alive` and tail `/dev/null`. This allows you to attach a shell to the running container for deep inspection of the environment state.
@@ -131,14 +131,14 @@ Since the evidence directory is mounted to the host, you can watch screenshots i
 
 ```bash
 # List screenshots as they appear
-watch -n 1 ls -l .sisyphus/evidence/archlinux/<timestamp>/screenshots/
+watch -n 1 ls -l .sisyphus/evidence/manjaro/<timestamp>/screenshots/
 
 # Or view them with auto-reload (requires feh)
-feh --auto-reload .sisyphus/evidence/archlinux/<timestamp>/screenshots/initial.png
+feh --auto-reload .sisyphus/evidence/manjaro/<timestamp>/screenshots/initial.png
 ```
 
 ### Inspect the running KWin/qml6 stack
-When a container is kept alive or paused, you can enter it to inspect the D-Bus bus, Wayland sockets, or process tree. The wrapper prints the deterministic container name (e.g., `kwin-mcp-test-archlinux-20260505T120000Z`).
+When a container is kept alive or paused, you can enter it to inspect the D-Bus bus, Wayland sockets, or process tree. The wrapper prints the deterministic container name (e.g., `kwin-mcp-test-manjaro-20260505T120000Z`).
 
 ```bash
 docker exec -it <container_name> bash
@@ -164,7 +164,7 @@ Note that certain runtime flags are restricted for security; refer to `docker/ru
 You can combine both flags to pause at a specific state and ensure the container remains available for inspection even after you resume and finish the test.
 
 ```bash
-scripts/test-distro.sh archlinux --pause-at=mouse_click_ping --keep
+scripts/test-distro.sh manjaro --pause-at=mouse_click_ping --keep
 ```
 
 ## Terminal output
@@ -205,10 +205,10 @@ If the test environment fails to start, or if the summary file is missing or mal
 ```
 
 ### Container vs host evidence path
-The evidence path printed in the terminal (e.g., `/evidence/20260505T120000Z`) is the internal container path. On the host machine, this directory is mapped to `.sisyphus/evidence/<distro>/<timestamp>/` via a bind mount. For example, an Arch Linux run's evidence can be found at:
+The evidence path printed in the terminal (e.g., `/evidence/20260505T120000Z`) is the internal container path. On the host machine, this directory is mapped to `.sisyphus/evidence/<distro>/<timestamp>/` via a bind mount. For example, a Manjaro run's evidence can be found at:
 
 ```text
-.sisyphus/evidence/archlinux/20260505T120000Z/
+.sisyphus/evidence/manjaro/20260505T120000Z/
 ```
 
 ### Consuming summary in CI
