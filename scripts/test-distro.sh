@@ -10,6 +10,9 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+: "${DOCKER_HOST:=tcp://localhost:2375}"
+export DOCKER_HOST
+
 SUPPORTED=(manjaro)
 PAUSE_STEPS=(launch_app screenshot_initial mouse_click_ping keyboard_type screenshot_post_typing)
 PAUSE_STEPS_DISPLAY=$(printf '%s ' "${PAUSE_STEPS[@]}")
@@ -98,7 +101,7 @@ echo "==> Wheel: $wheel"
 # Build image
 # ---------------------------------------------------------------------------
 echo "==> Building Docker image kwin-mcp-test:${distro}..."
-DOCKER_HOST=tcp://localhost:2375 docker build \
+docker build \
   --build-arg UID=1000 \
   --build-arg GID=1000 \
   -f "$REPO/docker/$dockerfile" \
@@ -131,7 +134,7 @@ dri_args=()
 echo "==> Running smoke test in container..."
 container_name="kwin-mcp-test-${distro}-$(date -u +%Y%m%dT%H%M%SZ)"
 echo "==> Container name: $container_name"
-DOCKER_HOST=tcp://localhost:2375 docker run --rm \
+docker run --rm \
   --name "$container_name" \
   "${dri_args[@]}" \
   -e SMOKE_PAUSE_AT="$pause_at" \
