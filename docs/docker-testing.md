@@ -98,3 +98,71 @@ If the test harness fails to execute or the smoke test does not complete, check 
 - **Missing Dependencies**: Verify that `uv` is installed on the host, as it is required to build the project wheel before it can be mounted into the container. The script will fail early if the `uv` command is not found in your `PATH`.
 - **Base Image Availability**: In rare cases, the pinned `manjarolinux/base:20260322` date-tag may no longer be pullable from Docker Hub due to registry garbage collection or tag rotation. If this occurs, you will see a "manifest not found" error during the image build phase. To fix this, visit the [Manjaro Docker Hub page](https://hub.docker.com/r/manjarolinux/base/tags) to find a more recent date-tag and update the `FROM` line in `docker/archlinux.Dockerfile`.
 - **Session Startup Failure**: If the smoke test exits during session startup, inspect the latest evidence directory first, then compare it with the validated 2026-05-04 run at `.sisyphus/evidence/archlinux/20260504T201603Z/`. The most useful diagnostic artifact is `stderr.log`, followed by `summary.json` and the presence or absence of generated screenshots.
+
+## Debugging
+The test harness provides flags to pause execution or keep the container alive for manual inspection of the virtual environment.
+
+### Pause at a specific step
+Use `--pause-at=<step>` to halt the smoke test after a specific milestone. The container will wait until you signal it to continue.
+
+```bash
+scripts/test-distro.sh archlinux --pause-at=screenshot_initial
+```
+
+Valid steps are: `launch_app`, `screenshot_initial`, `mouse_click_ping`, `keyboard_type`, and `screenshot_post_typing`. When paused, the stdout will show `paused at <step>`. To resume, touch the `.continue` file in the active evidence directory:
+
+```bash
+touch .sisyphus/evidence/archlinux/<timestamp>/.continue
+```
+
+The test will then print `resumed from <step>` and proceed.
+
+### Keep the container alive
+Use `--keep` to prevent the container from exiting after the smoke test completes, regardless of the verdict.
+
+```bash
+scripts/test-distro.sh archlinux --keep
+```
+
+The entrypoint will print `Container kept alive` and tail `/dev/null`. This allows you to attach a shell to the running container for deep inspection of the environment state.
+
+### Watch screenshots from the host
+Since the evidence directory is mounted to the host, you can watch screenshots in real-time even when the test is paused. Use a file observer or a simple watch command to monitor the screenshots directory:
+
+```bash
+# List screenshots as they appear
+watch -n 1 ls -l .sisyphus/evidence/archlinux/<timestamp>/screenshots/
+
+# Or view them with auto-reload (requires feh)
+feh --auto-reload .sisyphus/evidence/archlinux/<timestamp>/screenshots/initial.png
+```
+
+### Inspect the running KWin/qml6 stack
+When a container is kept alive or paused, you can enter it to inspect the D-Bus bus, Wayland sockets, or process tree. The wrapper prints the deterministic container name (e.g., `kwin-mcp-test-archlinux-20260505T120000Z`).
+
+```bash
+docker exec -it <container_name> bash
+```
+
+Inside the container, use these cheat-sheet commands for inspection:
+
+```bash
+# Check process tree for KWin, qml6, and AT-SPI
+pgrep -a "kwin_wayland|qml6|dbus-daemon|at-spi-bus-launcher"
+
+# Inspect qml6 application logs
+cat /tmp/kwin-mcp-screenshots-*/app_qml6_*.log
+
+# Interrogate KWin via D-Bus
+busctl --user list
+qdbus org.kde.KWin /KWin org.kde.KWin.supportInformation
+```
+
+Note that certain runtime flags are restricted for security; refer to `docker/runtime-contract.md` for the full specification.
+
+### Combining --pause-at and --keep
+You can combine both flags to pause at a specific state and ensure the container remains available for inspection even after you resume and finish the test.
+
+```bash
+scripts/test-distro.sh archlinux --pause-at=mouse_click_ping --keep
+```
