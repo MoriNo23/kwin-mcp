@@ -5,6 +5,11 @@
 # therefore covers both architectures from the user-facing 'manjaro' slot.
 FROM manjarolinux/base:20260322
 
+LABEL org.opencontainers.image.source="https://github.com/isac322/kwin-mcp" \
+      org.opencontainers.image.title="kwin-mcp minimal test environment" \
+      org.opencontainers.image.description="Prebuilt Manjaro environment for kwin-mcp Docker smoke tests" \
+      org.opencontainers.image.licenses="MIT"
+
 ARG UID=1000
 ARG GID=1000
 
