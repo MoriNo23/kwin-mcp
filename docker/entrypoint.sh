@@ -92,7 +92,12 @@ if [ "${SMOKE_KEEP:-0}" = "1" ]; then
   echo "==> Container kept alive (--keep). Inspect with: docker exec -it $container_identifier bash"
   echo "==> Container will exit when you run: docker stop $container_identifier"
   echo "Use the deterministic container name printed by the test wrapper when available."
-  exec tail -f /dev/null
+  keep_tail_pid=""
+  trap 'trap - TERM INT; if [ -n "${keep_tail_pid:-}" ]; then kill "$keep_tail_pid" 2>/dev/null || true; wait "$keep_tail_pid" 2>/dev/null || true; fi; exit "$smoke_exit"' TERM INT
+  tail -f /dev/null &
+  keep_tail_pid=$!
+  wait "$keep_tail_pid"
+  exit "$smoke_exit"
 fi
 
 exit "$smoke_exit"
