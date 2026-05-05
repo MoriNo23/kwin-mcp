@@ -81,4 +81,18 @@ PYEOF
 
 echo "install.json written: $EVIDENCE_DIR/install.json"
 
-exec /opt/kwinmcp-venv/bin/python /opt/docker/smoke_test.py
+set +e
+/opt/kwinmcp-venv/bin/python /opt/docker/smoke_test.py
+smoke_exit=$?
+set -e
+
+if [ "${SMOKE_KEEP:-0}" = "1" ]; then
+  container_identifier="${HOSTNAME:-$(hostname)}"
+  echo "Smoke test exit code: $smoke_exit"
+  echo "==> Container kept alive (--keep). Inspect with: docker exec -it $container_identifier bash"
+  echo "==> Container will exit when you run: docker stop $container_identifier"
+  echo "Use the deterministic container name printed by the test wrapper when available."
+  exec tail -f /dev/null
+fi
+
+exit "$smoke_exit"

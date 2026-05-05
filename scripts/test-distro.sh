@@ -11,17 +11,21 @@ set -euo pipefail
 IFS=$'\n\t'
 
 SUPPORTED=(archlinux)
+PAUSE_STEPS=(launch_app screenshot_initial mouse_click_ping keyboard_type screenshot_post_typing)
+PAUSE_STEPS_DISPLAY=$(printf '%s ' "${PAUSE_STEPS[@]}")
+PAUSE_STEPS_DISPLAY=${PAUSE_STEPS_DISPLAY% }
 
 # ---------------------------------------------------------------------------
 # Argument validation
 # ---------------------------------------------------------------------------
-if [ $# -ne 1 ]; then
+if [ $# -lt 1 ]; then
   echo "usage: $(basename "$0") <distro>" >&2
   echo "supported: ${SUPPORTED[*]}" >&2
   exit 2
 fi
 
 distro="$1"
+shift
 supported=false
 for d in "${SUPPORTED[@]}"; do
   [ "$d" = "$distro" ] && supported=true && break
@@ -32,6 +36,35 @@ if [ "$supported" = false ]; then
   echo "supported distros: ${SUPPORTED[*]}" >&2
   exit 2
 fi
+
+pause_at=""
+keep=0
+for arg in "$@"; do
+  case "$arg" in
+    --pause-at=*)
+      pause_at=${arg#--pause-at=}
+      valid_pause=false
+      for step in "${PAUSE_STEPS[@]}"; do
+        if [ "$step" = "$pause_at" ]; then
+          valid_pause=true
+          break
+        fi
+      done
+      if [ "$valid_pause" = false ]; then
+        echo "error: invalid step '$pause_at' (valid: $PAUSE_STEPS_DISPLAY)" >&2
+        exit 2
+      fi
+      ;;
+    --keep)
+      keep=1
+      ;;
+    *)
+      echo "usage: $(basename "$0") <distro> [--pause-at=<step>] [--keep]" >&2
+      echo "supported: ${SUPPORTED[*]}" >&2
+      exit 2
+      ;;
+  esac
+done
 
 # ---------------------------------------------------------------------------
 # Resolve repo root
@@ -96,10 +129,19 @@ dri_args=()
 [ -e /dev/dri/renderD129 ] && dri_args+=(--device /dev/dri/renderD129)
 
 echo "==> Running smoke test in container..."
+container_name="kwin-mcp-test-${distro}-$(date -u +%Y%m%dT%H%M%SZ)"
+echo "==> Container name: $container_name"
 DOCKER_HOST=tcp://localhost:2375 docker run --rm \
+  --name "$container_name" \
   "${dri_args[@]}" \
+  -e SMOKE_PAUSE_AT="$pause_at" \
+  -e SMOKE_KEEP=$keep \
   -v "$REPO/dist:/wheels:ro" \
   -v "$REPO/docker/smoke_test.py:/opt/docker/smoke_test.py:ro" \
   -v "$REPO/docker/smoke_app.qml:/opt/docker/smoke_app.qml:ro" \
   -v "$REPO/.sisyphus/evidence/${distro}:/evidence" \
   "kwin-mcp-test:${distro}"
+
+if [ "$keep" -eq 1 ]; then
+  echo "==> Container kept alive: docker stop $container_name when done."
+fi
