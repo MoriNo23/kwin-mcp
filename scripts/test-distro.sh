@@ -54,10 +54,10 @@ fi
 # ---------------------------------------------------------------------------
 echo "==> Building kwin-mcp wheel..."
 uv build --wheel --out-dir "$REPO/dist"
-wheel=$(ls -t "$REPO/dist"/kwin_mcp-*.whl 2>/dev/null | head -1)
+wheel=$(ls -t "$REPO/dist"/kwin_mcp-*.whl 2>/dev/null | head -1 || true)
 if [ -z "$wheel" ]; then
-  echo "error: no kwin_mcp-*.whl found after uv build" >&2
-  exit 2
+  echo "error: no kwin-mcp wheel in dist/" >&2
+  exit 3
 fi
 echo "==> Wheel: $wheel"
 
@@ -66,6 +66,8 @@ echo "==> Wheel: $wheel"
 # ---------------------------------------------------------------------------
 echo "==> Building Docker image kwin-mcp-test:${distro}..."
 DOCKER_HOST=tcp://localhost:2375 docker build \
+  --build-arg UID=1000 \
+  --build-arg GID=1000 \
   -f "$REPO/docker/$dockerfile" \
   -t "kwin-mcp-test:${distro}" \
   "$REPO/docker"
@@ -80,13 +82,8 @@ chmod 0777 "$REPO/.sisyphus/evidence/${distro}"
 # ---------------------------------------------------------------------------
 # Run container (forbidden-flag policy: see docker/runtime-contract.md)
 # ---------------------------------------------------------------------------
-dri_args=()
-[ -e /dev/dri/renderD128 ] && dri_args+=(--device /dev/dri/renderD128)
-[ -e /dev/dri/renderD129 ] && dri_args+=(--device /dev/dri/renderD129)
-
 echo "==> Running smoke test in container..."
 DOCKER_HOST=tcp://localhost:2375 docker run --rm \
-  "${dri_args[@]}" \
   -v "$REPO/dist:/wheels:ro" \
   -v "$REPO/docker/smoke_test.py:/opt/docker/smoke_test.py:ro" \
   -v "$REPO/docker/smoke_app.qml:/opt/docker/smoke_app.qml:ro" \

@@ -5,6 +5,9 @@
 # therefore covers both architectures from the user-facing 'archlinux' slot.
 FROM manjarolinux/base:20260322
 
+ARG UID=1000
+ARG GID=1000
+
 RUN pacman-key --init \
  && pacman-key --populate archlinux manjaro \
  && pacman -Syu --noconfirm --needed \
@@ -30,28 +33,28 @@ RUN setcap -r /usr/bin/kwin_wayland \
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
-RUN existing_group=$(getent group 1000 | cut -d: -f1 || true) \
+RUN existing_group=$(getent group "${GID}" | cut -d: -f1 || true) \
  && if [ -n "$existing_group" ] && [ "$existing_group" != kwinmcp ]; then groupmod -n kwinmcp "$existing_group"; fi \
- && if ! getent group 1000 >/dev/null; then groupadd -g 1000 kwinmcp; fi \
- && existing_user=$(getent passwd 1000 | cut -d: -f1 || true) \
+ && if ! getent group "${GID}" >/dev/null; then groupadd -g "${GID}" kwinmcp; fi \
+ && existing_user=$(getent passwd "${UID}" | cut -d: -f1 || true) \
  && if [ -n "$existing_user" ] && [ "$existing_user" != kwinmcp ]; then usermod -l kwinmcp -d /home/kwinmcp -m -s /bin/bash "$existing_user"; fi \
- && if ! getent passwd 1000 >/dev/null; then useradd -m -u 1000 -g 1000 -s /bin/bash kwinmcp; fi
+ && if ! getent passwd "${UID}" >/dev/null; then useradd -m -u "${UID}" -g "${GID}" -s /bin/bash kwinmcp; fi
 
-RUN mkdir -p /run/user/1000 \
- && chown 1000:1000 /run/user/1000 \
- && chmod 0700 /run/user/1000
+RUN mkdir -p "/run/user/${UID}" \
+ && chown "${UID}:${GID}" "/run/user/${UID}" \
+ && chmod 0700 "/run/user/${UID}"
 
-ENV XDG_RUNTIME_DIR=/run/user/1000
+ENV XDG_RUNTIME_DIR=/run/user/${UID}
 
-RUN install -d -o 1000 -g 1000 /opt/kwinmcp-venv \
+RUN install -d -o "${UID}" -g "${GID}" /opt/kwinmcp-venv \
  && su kwinmcp -c "uv venv --system-site-packages /opt/kwinmcp-venv"
 
 ENV PATH=/opt/kwinmcp-venv/bin:$PATH \
     PYTHONUNBUFFERED=1
 
-RUN install -d -o 1000 -g 1000 /opt/docker /wheels /evidence
+RUN install -d -o "${UID}" -g "${GID}" /opt/docker /wheels /evidence
 
-COPY --chown=1000:1000 entrypoint.sh /opt/docker/entrypoint.sh
+COPY --chown=${UID}:${GID} entrypoint.sh /opt/docker/entrypoint.sh
 RUN chmod +x /opt/docker/entrypoint.sh
 
 WORKDIR /home/kwinmcp
