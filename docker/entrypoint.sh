@@ -84,6 +84,7 @@ echo "install.json written: $EVIDENCE_DIR/install.json"
 set +e
 /opt/kwinmcp-venv/bin/python /opt/docker/smoke_test.py
 smoke_exit=$?
+EVIDENCE_DIR="$EVIDENCE_DIR" python3 /opt/docker/print_summary.py || true
 set -e
 
 if [ "${SMOKE_KEEP:-0}" = "1" ]; then

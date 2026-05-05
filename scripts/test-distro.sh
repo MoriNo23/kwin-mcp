@@ -139,6 +139,7 @@ DOCKER_HOST=tcp://localhost:2375 docker run --rm \
   -v "$REPO/dist:/wheels:ro" \
   -v "$REPO/docker/smoke_test.py:/opt/docker/smoke_test.py:ro" \
   -v "$REPO/docker/smoke_app.qml:/opt/docker/smoke_app.qml:ro" \
+  -v "$REPO/docker/print_summary.py:/opt/docker/print_summary.py:ro" \
   -v "$REPO/.sisyphus/evidence/${distro}:/evidence" \
   "kwin-mcp-test:${distro}"
 
