@@ -1,0 +1,146 @@
+name: DRM kernel-module probe (diagnostic)
+
+# One-shot diagnostic to definitively answer two questions:
+#   Q1. Can a /dev/dri/renderD* render node be made available on a
+#       GitHub-hosted ubuntu-latest runner? (vgem availability,
+#       alternate modules, source-build feasibility, signing policy.)
+#   Q2 was answered locally: KWin ScreenShot2 hard-fails with
+#       DBusException('Screenshot got cancelled') when no render
+#       node is passed through, so a render node IS required.
+#
+# This workflow runs only on this PR branch and on workflow_dispatch.
+# It is non-gating (its success/failure does not block the PR).
+on:
+  push:
+    branches: [opencode/cosmic-wolf]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kernel + flavour
+        run: |
+          set -x
+          uname -a
+          uname -r
+          cat /etc/os-release
+          dpkg -l 'linux-image-*' 'linux-modules-*' 2>/dev/null | grep -E "^ii" || true
+
+      - name: Currently loaded DRM modules and devices
+        run: |
+          set -x
+          lsmod | grep -iE "drm|gpu|vgem|vkms|virtio_gpu" || true
+          ls -la /dev/dri/ 2>/dev/null || echo "(no /dev/dri/)"
+          ls -la /sys/class/drm/ 2>/dev/null || echo "(no /sys/class/drm)"
+
+      - name: Module index of the running kernel (focus on DRM)
+        run: |
+          set -x
+          KVER=$(uname -r)
+          ls -la "/lib/modules/$KVER/" || true
+          find "/lib/modules/$KVER" -name "*.ko*" 2>/dev/null \
+            | sed 's|.*/||; s|\.ko.*$||' | sort -u > /tmp/all-modules.txt
+          echo "module count: $(wc -l < /tmp/all-modules.txt)"
+          echo "--- vgem / vkms / virtio_gpu / drm matches ---"
+          grep -E "^(vgem|vkms|virtio_gpu|drm$|drm_)" /tmp/all-modules.txt || true
+          echo "--- ALL drivers/gpu modules ---"
+          find "/lib/modules/$KVER" -path "*drivers/gpu*" -name "*.ko*" 2>/dev/null || true
+
+      - name: Kernel build config (relevant flags)
+        run: |
+          set -x
+          KVER=$(uname -r)
+          if [ -r "/boot/config-$KVER" ]; then
+            grep -E "^CONFIG_(DRM_VGEM|DRM_VKMS|DRM_VIRTIO|DRM_KMS_HELPER|MODULE_SIG|MODULE_SIG_FORCE|MODULE_SIG_ALL)" "/boot/config-$KVER" || true
+          else
+            echo "no /boot/config-$KVER; trying /proc/config.gz"
+            sudo modprobe configs 2>/dev/null || true
+            zcat /proc/config.gz 2>/dev/null | grep -E "^CONFIG_(DRM_VGEM|DRM_VKMS|DRM_VIRTIO|MODULE_SIG)" || echo "(/proc/config.gz unavailable)"
+          fi
+
+      - name: apt search for vgem / virtio-gpu providers
+        run: |
+          set -x
+          apt-cache search vgem || true
+          echo "--- linux-modules-* matching this kernel ---"
+          KVER=$(uname -r)
+          apt list --all-versions 2>/dev/null | grep -E "linux-(modules|image)-($KVER|generic|azure)" | head -20 || true
+
+      - name: Try linux-modules-extra; report whether vgem ships
+        run: |
+          set -x
+          KVER=$(uname -r)
+          sudo apt-get update -qq
+          sudo apt-get install -y "linux-modules-extra-$KVER"
+          echo "--- vgem in linux-modules-extra? ---"
+          dpkg -L "linux-modules-extra-$KVER" | grep -i vgem || echo "vgem NOT in linux-modules-extra-$KVER"
+          echo "--- vkms in linux-modules-extra? ---"
+          dpkg -L "linux-modules-extra-$KVER" | grep -i vkms || echo "vkms NOT in linux-modules-extra-$KVER"
+          echo "--- virtio_gpu in linux-modules-extra? ---"
+          dpkg -L "linux-modules-extra-$KVER" | grep -iE "virtio.?gpu" || echo "virtio_gpu NOT in linux-modules-extra-$KVER"
+
+      - name: Try generic flavour modules-extra (vgem may be there)
+        run: |
+          set -x
+          # Generic kernel flavour ships full DRM stack; modules built for
+          # one kernel ABI cannot be loaded on a different kernel, but the
+          # package listing tells us whether vgem exists at all in Ubuntu.
+          apt-cache show 'linux-modules-extra-*-generic' 2>/dev/null | head -40 || true
+          # Latest generic version on Noble:
+          apt list --all-versions 'linux-modules-extra-*-generic' 2>/dev/null | grep -v "Listing" | tail -3 || true
+
+      - name: Probe modprobe vkms + vgem after install
+        run: |
+          set -x
+          sudo modprobe vkms 2>&1 || echo "modprobe vkms FAILED"
+          sudo modprobe vgem 2>&1 || echo "modprobe vgem FAILED"
+          sudo udevadm settle
+          ls -la /dev/dri/ || echo "(no /dev/dri after modprobe)"
+
+      - name: Source-build feasibility for vgem
+        run: |
+          set -x
+          KVER=$(uname -r)
+          echo "--- linux-headers package ---"
+          apt-cache policy "linux-headers-$KVER" || true
+          echo "--- linux-source / kernel source availability ---"
+          apt-cache search "^linux-source" | head || true
+          echo "--- gcc + make ---"
+          which gcc make
+          gcc --version | head -1
+          echo "--- /lib/modules/$KVER/build symlink (kernel build dir) ---"
+          ls -la "/lib/modules/$KVER/build" 2>/dev/null || echo "(no build dir; need linux-headers)"
+
+      - name: Module-signing enforcement
+        run: |
+          set -x
+          # If lockdown is on or MODULE_SIG_FORCE=y, self-built modules
+          # cannot be insmod-ed even with root unless signed by a trusted
+          # key.  Inspect both runtime (/sys/kernel/security/lockdown) and
+          # config-time (CONFIG_MODULE_SIG*).
+          cat /sys/kernel/security/lockdown 2>/dev/null || echo "(no lockdown sysfs)"
+          dmesg 2>/dev/null | grep -iE "module verification|lockdown|secure boot" | head -10 || true
+          mokutil --sb-state 2>/dev/null || echo "(no mokutil; assume not secure boot)"
+
+      - name: Try insmod of a hand-built vgem (best effort)
+        run: |
+          set -x
+          KVER=$(uname -r)
+          if ! sudo apt-get install -y "linux-headers-$KVER"; then
+            echo "linux-headers-$KVER NOT installable -> source build infeasible"
+            exit 0
+          fi
+          # Get the real Ubuntu kernel source (matches running kernel).
+          # The "source-package" name on Azure variant differs; try a few.
+          mkdir -p /tmp/ksrc && cd /tmp/ksrc
+          apt-get source --download-only "linux-azure-$KVER" 2>&1 | head -20 || true
+          apt-get source --download-only "linux-azure" 2>&1 | head -20 || true
+          ls -la /tmp/ksrc || true
+          echo "--- if source available, build only drivers/gpu/drm/vgem ---"
+          # Stop short of actually compiling here (large download); the
+          # presence/absence of headers + source + lockdown answers the
+          # feasibility question.
