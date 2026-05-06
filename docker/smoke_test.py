@@ -125,6 +125,17 @@ def best_effort_screenshot(
     Returns (path, sha256) on success, (None, None) when KWin's ScreenShot2
     pipeline cancels (no /dev/dri/renderD*; standard CI failure mode). The
     a11y assertions remain as the primary verification path.
+
+    TODO(screenshot-coverage): GitHub-hosted Azure runners cannot expose a
+    DRM render node, so the entire kwin-mcp screenshot stack
+    (kwin_mcp.screenshot.capture_screenshot_dbus -> KWin ScreenShot2 D-Bus ->
+    Mesa/EGL/GBM) is **silently skipped** in CI. Regressions in that stack
+    will not turn the smoke job red; only local runs with `--device
+    /dev/dri/renderD*` exercise it. To close the gap, either:
+      (a) add a software render-only fallback to src/kwin_mcp/screenshot.py
+          (e.g. trigger QML grabToImage via a smoke-only D-Bus channel), or
+      (b) add a self-hosted runner job that mounts a real render node.
+    Tracking issue / follow-up PR should reference this comment.
     """
     try:
         out = engine.screenshot()
