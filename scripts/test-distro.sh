@@ -93,14 +93,25 @@ fi
 echo "==> Wheel: $wheel"
 
 # ---------------------------------------------------------------------------
-# Pull prebuilt image or build local image
+# Pull prebuilt image; fall back to local build on failure
 # ---------------------------------------------------------------------------
+# Pull failures (e.g. GHCR access denied for a private package, registry
+# transient error) MUST NOT block the harness; the local Dockerfile is the
+# source of truth. We retag the local build as the requested image so the
+# downstream `docker run` reference is unchanged.
+need_local_build=1
 if [ -n "${KWIN_MCP_TEST_IMAGE:-}" ]; then
   image="$KWIN_MCP_TEST_IMAGE"
   echo "==> Pulling prebuilt Docker image $image..."
-  docker pull "$image"
-  echo "==> Image ready: $image"
-else
+  if docker pull "$image"; then
+    echo "==> Image ready: $image"
+    need_local_build=0
+  else
+    echo "==> Pull failed; falling back to local build of docker/$dockerfile" >&2
+  fi
+fi
+
+if [ "$need_local_build" -eq 1 ]; then
   if [ ! -f "$REPO/docker/$dockerfile" ]; then
     echo "error: docker/$dockerfile not found" >&2
     exit 2

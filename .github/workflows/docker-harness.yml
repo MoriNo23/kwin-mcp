@@ -60,7 +60,20 @@ jobs:
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
         run: |
-          docker pull "${{ matrix.image }}"
+          set -euo pipefail
+          # Pull failures (private GHCR package without packages:write linkage,
+          # registry transient errors) MUST NOT fail this contract step; we
+          # fall back to building the same Dockerfile that produced the GHCR
+          # image so the contract is verified either way.
+          if ! docker pull "${{ matrix.image }}"; then
+            echo "==> GHCR pull failed; building docker/${{ matrix.distro }}.Dockerfile locally"
+            docker build \
+              --build-arg UID=1000 \
+              --build-arg GID=1000 \
+              -f "docker/${{ matrix.distro }}.Dockerfile" \
+              -t "${{ matrix.image }}" \
+              docker
+          fi
           uv build --wheel --out-dir dist
           docker run --rm \
             --entrypoint /bin/bash \
