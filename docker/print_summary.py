@@ -6,6 +6,7 @@ import os
 import pathlib
 import re
 import sys
+from typing import Any, cast
 
 MAX_REASON_LEN = 500
 SCREENSHOT_KEY_TO_FILENAME = {
@@ -38,11 +39,12 @@ def _load_summary(path: pathlib.Path) -> tuple[dict[str, object] | None, str | N
 
 
 def _screenshots(summary: dict[str, object]) -> str:
-    screenshot_sha = summary.get("screenshot_sha")
-    if not isinstance(screenshot_sha, dict):
+    raw = summary.get("screenshot_sha")
+    if not isinstance(raw, dict):
         return ""
+    screenshot_sha = cast("dict[str, Any]", raw)
     filenames = [
-        filename for key, filename in SCREENSHOT_KEY_TO_FILENAME.items() if key in screenshot_sha
+        filename for key, filename in SCREENSHOT_KEY_TO_FILENAME.items() if screenshot_sha.get(key)
     ]
     return ", ".join(filenames)
 

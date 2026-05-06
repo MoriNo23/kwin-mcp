@@ -37,49 +37,11 @@ jobs:
       - name: Login to GHCR
         run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      - name: Detect DRM render-node capability
-        id: drm
-        run: |
-          if ls /dev/dri/renderD* >/dev/null 2>&1; then
-            echo "has_render_node=true" >> "$GITHUB_OUTPUT"
-            ls -la /dev/dri/
-          else
-            echo "has_render_node=false" >> "$GITHUB_OUTPUT"
-            echo "GitHub-hosted runner has no /dev/dri/renderD*. Full KWin ScreenShot2 smoke requires a self-hosted runner with a render node. Running prebuilt image contract check instead."
-          fi
-
-      - name: Run full smoke harness
-        if: steps.drm.outputs.has_render_node == 'true'
+      - name: Run smoke harness
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
           KWIN_MCP_TEST_IMAGE: ${{ matrix.image }}
         run: scripts/test-distro.sh ${{ matrix.distro }}
-
-      - name: Verify prebuilt smoke image contract
-        if: steps.drm.outputs.has_render_node != 'true'
-        env:
-          DOCKER_HOST: unix:///var/run/docker.sock
-        run: |
-          set -euo pipefail
-          # Pull failures (private GHCR package without packages:write linkage,
-          # registry transient errors) MUST NOT fail this contract step; we
-          # fall back to building the same Dockerfile that produced the GHCR
-          # image so the contract is verified either way.
-          if ! docker pull "${{ matrix.image }}"; then
-            echo "==> GHCR pull failed; building docker/${{ matrix.distro }}.Dockerfile locally"
-            docker build \
-              --build-arg UID=1000 \
-              --build-arg GID=1000 \
-              -f "docker/${{ matrix.distro }}.Dockerfile" \
-              -t "${{ matrix.image }}" \
-              docker
-          fi
-          uv build --wheel --out-dir dist
-          docker run --rm \
-            --entrypoint /bin/bash \
-            -v "$PWD/dist:/wheels:ro" \
-            "${{ matrix.image }}" \
-            -lc 'set -euo pipefail; python --version; test -x /usr/bin/kwin_wayland; test -x /usr/bin/qml6; test -x /usr/bin/wtype; test -d /opt/kwinmcp-venv; uv pip install --python /opt/kwinmcp-venv/bin/python /wheels/*.whl; /opt/kwinmcp-venv/bin/python -c "from kwin_mcp.core import AutomationEngine; print(AutomationEngine.__name__)"'
 
       - name: Upload evidence
         if: always()

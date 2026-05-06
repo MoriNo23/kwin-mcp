@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Controls
 
 ApplicationWindow {
-    width: 320; height: 180
+    width: 1920; height: 1080
+    visibility: ApplicationWindow.FullScreen
     visible: true
     title: "a11y smoke"
     Column {
@@ -26,7 +27,7 @@ ApplicationWindow {
             id: status
             text: "ready"
             Accessible.id: "status-text"
-            Accessible.name: "Status text"
+            Accessible.name: "Status text: " + text
         }
     }
 }
