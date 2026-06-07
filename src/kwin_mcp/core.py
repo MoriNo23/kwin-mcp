@@ -92,6 +92,9 @@ class AutomationEngine:
                 env["XDG_DATA_HOME"] = str(info.home_dir / ".local" / "share")
                 env["XDG_CACHE_HOME"] = str(info.home_dir / ".cache")
                 env["XDG_STATE_HOME"] = str(info.home_dir / ".local" / "state")
+        # For live sessions, pass AT_SPI_BUS_ADDRESS if we set it up
+        if hasattr(session, "_atspi_bus_address") and session._atspi_bus_address:
+            env["AT_SPI_BUS_ADDRESS"] = session._atspi_bus_address
         env["QT_QPA_PLATFORM"] = "wayland"
         env.pop("DISPLAY", None)
         return env
@@ -258,10 +261,15 @@ class AutomationEngine:
         self._session = session
         self._keep_screenshots = keep_screenshots
 
+        # Ensure AT-SPI2 is available (may need to start bus + registryd)
+        session._ensure_atspi()
+
         # Clipboard is always available on live sessions
         self._clipboard_enabled = True
 
         result = f"Connected to live KWin session. D-Bus: {dbus_addr}, Wayland: {wayland_disp}"
+        if session._atspi_bus_address:
+            result += f"\nAT-SPI2: {session._atspi_bus_address}"
 
         # Set up input backend — EIS first, ydotool fallback
         time.sleep(0.3)

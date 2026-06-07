@@ -468,6 +468,144 @@ class LiveSession:
         self._running = True
         self._app_counter: int = 0
         self._keep_screenshots: bool = False
+        self._atspi_bus_proc: subprocess.Popen | None = None
+        self._atspi_registryd_proc: subprocess.Popen | None = None
+        self._atspi_bus_address: str = ""
+
+    def _ensure_atspi(self) -> None:
+        """Ensure AT-SPI2 bus is accessible for live sessions.
+
+        On some systems (e.g. Debian), the host AT-SPI2 bus may be in a
+        broken state where the daemon is running but the socket was never
+        created. This kills stale processes and restarts cleanly.
+
+        If AT-SPI2 is already accessible, this is a no-op.
+        """
+        import socket as _socket
+
+        runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+        std_socket_path = Path(runtime_dir) / "at-spi" / "bus"
+
+        # Check if AT-SPI2 is already accessible
+        if self._try_connect_atspi(std_socket_path):
+            self._atspi_bus_address = f"unix:path={std_socket_path}"
+            return
+
+        # AT-SPI2 not accessible — kill stale processes and restart
+        self._kill_stale_atspi()
+
+        bus_launcher = self._resolve_atspi_binary(
+            "/usr/share/dbus-1/services/org.a11y.Bus.service",
+            "/usr/libexec/at-spi-bus-launcher",
+        )
+        registryd = self._resolve_atspi_binary(
+            "/usr/share/dbus-1/accessibility-services/org.a11y.atspi.Registry.service",
+            "/usr/libexec/at-spi2-registryd",
+            strip_flags="--use-gnome-session",
+        )
+
+        env = {
+            **os.environ,
+            "ATSPI_DBUS_IMPLEMENTATION": "dbus-daemon",
+        }
+
+        try:
+            # Remove stale socket/lock files
+            for suffix in ("", ".lock"):
+                path = std_socket_path.parent / f"bus{suffix}"
+                with contextlib.suppress(OSError):
+                    path.unlink()
+
+            self._atspi_bus_proc = subprocess.Popen(
+                [bus_launcher, "--launch-immediately"],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            time.sleep(0.5)
+
+            self._atspi_registryd_proc = subprocess.Popen(
+                [registryd, "--use-screen-reader=false"],
+                env={**env, "GSETTINGS_BACKEND": "keyfile"},
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            time.sleep(0.3)
+
+            # Enable AT-SPI2 on the bus
+            subprocess.run(
+                [
+                    "dbus-send", "--session", "--print-reply",
+                    "--dest=org.a11y.Bus", "/org/a11y/Bus",
+                    "org.freedesktop.DBus.Properties.Set",
+                    "string:org.a11y.Bus", "string:IsEnabled",
+                    "variant:boolean:true",
+                ],
+                env=env,
+                capture_output=True,
+                timeout=5,
+            )
+
+            # Verify the socket appeared
+            if self._try_connect_atspi(std_socket_path):
+                self._atspi_bus_address = f"unix:path={std_socket_path}"
+                return
+
+            # Fallback: set address anyway (may work for some clients)
+            self._atspi_bus_address = f"unix:path={std_socket_path}"
+
+        except Exception:
+            # AT-SPI2 setup failed — tools will raise clear errors
+            pass
+
+    @staticmethod
+    def _try_connect_atspi(path: Path) -> bool:
+        """Try to connect to an AT-SPI2 bus socket."""
+        import socket as _socket
+
+        if not path.exists():
+            return False
+        try:
+            s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+            s.connect(str(path))
+            s.close()
+            return True
+        except (ConnectionRefusedError, FileNotFoundError, OSError):
+            return False
+
+    @staticmethod
+    def _kill_stale_atspi() -> None:
+        """Kill stale AT-SPI2 processes that may hold broken state."""
+        for name in ("at-spi2-registryd", "at-spi-bus-launcher"):
+            try:
+                result = subprocess.run(
+                    ["pgrep", "-f", name],
+                    capture_output=True, text=True, timeout=5,
+                )
+                for pid_str in result.stdout.strip().split("\n"):
+                    if pid_str.isdigit():
+                        with contextlib.suppress(OSError):
+                            os.kill(int(pid_str), signal.SIGTERM)
+            except Exception:
+                pass
+        time.sleep(0.3)
+
+    @staticmethod
+    def _resolve_atspi_binary(
+        service_file: str, fallback: str, strip_flags: str = "",
+    ) -> str:
+        """Resolve AT-SPI2 binary path from D-Bus service file."""
+        try:
+            with open(service_file) as f:
+                for line in f:
+                    if line.startswith("Exec="):
+                        path = line.strip().split("=", 1)[1]
+                        if strip_flags:
+                            path = path.replace(strip_flags, "").strip()
+                        return path
+        except FileNotFoundError:
+            pass
+        return fallback
 
     @property
     def is_running(self) -> bool:
@@ -545,8 +683,8 @@ class LiveSession:
     def stop(self, *, keep_screenshots: bool = False) -> None:
         """Disconnect from the live session.
 
-        Only cleans up screenshot directory. Does NOT kill KWin or any apps
-        that were already running before the connection.
+        Only cleans up screenshot directory and AT-SPI2 processes we started.
+        Does NOT kill KWin or any apps that were already running before the connection.
         """
         if not self._running:
             return
@@ -558,6 +696,14 @@ class LiveSession:
                 app.process.terminate()
             with contextlib.suppress(subprocess.TimeoutExpired):
                 app.process.wait(timeout=3)
+
+        # Clean up AT-SPI2 processes we started
+        for proc in (self._atspi_registryd_proc, self._atspi_bus_proc):
+            if proc is not None:
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    proc.terminate()
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    proc.wait(timeout=3)
 
         if not keep_screenshots and self._info.screenshot_dir.exists():
             shutil.rmtree(self._info.screenshot_dir, ignore_errors=True)
