@@ -335,16 +335,34 @@ echo "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
 
 # Ensure all child processes are cleaned up on exit
 cleanup() {{
-    kill $KWIN_PID $AT_SPI_PID 2>/dev/null
-    wait $KWIN_PID $AT_SPI_PID 2>/dev/null
+    kill $KWIN_PID $AT_SPI_PID $REGISTRYD_PID 2>/dev/null
+    wait $KWIN_PID $AT_SPI_PID $REGISTRYD_PID 2>/dev/null
 }}
 trap cleanup EXIT TERM INT HUP
+
+# Resolve AT-SPI2 binary paths from D-Bus service files.
+# Hardcoded paths break on distros that put binaries in /usr/libexec or
+# /usr/lib/at-spi2-core (Debian, Fedora, Arch, etc).
+AT_SPI_BUS_LAUNCHER=$(sed -n 's/^Exec=//p' /usr/share/dbus-1/services/org.a11y.Bus.service 2>/dev/null | head -1)
+AT_SPI_BUS_LAUNCHER="${{AT_SPI_BUS_LAUNCHER:-/usr/libexec/at-spi-bus-launcher}}"
+AT_SPI_REGISTRYD=$(sed -n 's/^Exec=//p' /usr/share/dbus-1/accessibility-services/org.a11y.atspi.Registry.service 2>/dev/null | head -1 | sed 's/ --use-gnome-session//')
+AT_SPI_REGISTRYD="${{AT_SPI_REGISTRYD:-/usr/libexec/at-spi2-registryd}}"
 
 # Start the AT-SPI accessibility bus.
 # ATSPI_DBUS_IMPLEMENTATION is set in _build_env() to force dbus-daemon
 # instead of dbus-broker (which reuses the host's AT-SPI bus).
-/usr/lib/at-spi-bus-launcher --launch-immediately &
+$AT_SPI_BUS_LAUNCHER --launch-immediately &
 AT_SPI_PID=$!
+
+# Start the AT-SPI registry daemon (needed for apps to register accessibility trees).
+# --use-gnome-session is omitted because there is no session manager in isolated sessions.
+# Disable screen reader to avoid requiring additional dependencies.
+GSETTINGS_BACKEND=keyfile ${{AT_SPI_REGISTRYD}} --use-screen-reader=false &
+REGISTRYD_PID=$!
+
+# Enable AT-SPI2 on the bus so apps register their accessibility trees.
+dbus-send --session --print-reply --dest=org.a11y.Bus /org/a11y/Bus org.freedesktop.DBus.Properties.Set string:org.a11y.Bus string:IsEnabled variant:boolean:true 2>/dev/null || true
+
 sleep 0.2
 
 # Pre-set D-Bus activation environment BEFORE starting KWin.
