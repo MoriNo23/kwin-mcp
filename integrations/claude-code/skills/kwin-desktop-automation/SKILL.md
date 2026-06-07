@@ -64,16 +64,15 @@ sudo apt install kwin-wayland spectacle at-spi2-core \
 # Python deps (Hermes' native MCP client needs the mcp package too)
 pip install mcp
 
-# The server itself (uv tool is recommended, pip works too). After
-# `uv tool install`, the binary lands in ~/.local/bin — make sure that
-# is on $PATH for the Hermes process.
-uv tool install kwin-mcp
-# or
-pip install --user kwin-mcp
+# The server itself.
+# Option A: Install from the Debian-fixed fork (recommended for Debian/Ubuntu):
+python3 -m venv ~/.venv-kwin-mcp
+source ~/.venv-kwin-mcp/bin/activate
+pip install "kwin-mcp @ git+https://github.com/MoriNo23/kwin-mcp.git@main"
+# Ensure ~/.venv-kwin-mcp/bin is in $PATH for the Hermes process.
 
-# IMPORTANT (Debian/Ubuntu): kwin-mcp v0.7.0 has AT-SPI2 bugs in isolated sessions.
-# After install, apply the fix from references/kwin-mcp-atspi-debian-fix.md
-# or run: skill_view("kwin-desktop-automation", "references/kwin-mcp-atspi-debian-fix.md")
+# Option B: Original upstream (has AT-SPI2 bugs on Debian):
+# uv tool install kwin-mcp
 ```
 
 ### Register with Hermes
@@ -408,7 +407,9 @@ For a single, well-tested raise-or-launch, `ww` is the smallest dependency. For 
 
 ## Common Pitfalls
 
-0. **AT-SPI2 en sesiones aisladas con kwin-mcp v0.7.0 en Debian.** El wrapper script que inicia `session_start` tiene hardcoded `/usr/lib/at-spi-bus-launcher` (línea 346 de `session.py`), pero Debian lo instala en `/usr/libexec/at-spi-bus-launcher`. Además, no inicia `at-spi2-registryd` que es necesario para que las apps registren sus árboles de accesibilidad. **Fix:** parchear `_build_wrapper_script()` en `~/.local/share/uv/tools/kwin-mcp/lib/python3.13/site-packages/kwin_mcp/session.py` para (a) resolver rutas desde los archivos de servicio D-Bus, (b) iniciar registryd sin `--use-gnome-session`, y (c) habilitar `IsEnabled=true` en el bus. Ver PR #8 del repositorio. El parche ya está aplicado en este sistema pero se perderá si haces `uv tool upgrade kwin-mcp`.
+0. **AT-SPI2 en sesiones aisladas con kwin-mcp v0.7.0 (upstream).** El wrapper script tiene hardcoded `/usr/lib/at-spi-bus-launcher` pero Debian lo instala en `/usr/libexec/`. Además no inicia `at-spi2-registryd`. **Fix:** instalar desde el fork `MoriNo23/kwin-mcp` que incluye el parche (resuelve rutas desde D-Bus service files, inicia registryd sin `--use-gnome-session`, y habilita `IsEnabled=true`). Ver `session.py` en `~/.local/share/uv/tools/kwin-mcp/lib/python3.13/site-packages/kwin_mcp/session.py`.
+
+0b. **AT-SPI2 en sesiones live (session_connect).** El host puede tener AT-SPI2 roto desde boot (dbus-daemon vivo pero sin socket). `session_connect` ahora detecta esto, mata procesos stale, y reinicia limpiamente con `ATSPI_DBUS_IMPLEMENTATION=dbus-daemon`. Las apps existentes del desktop NO se re-registran — necesitan restart. Apps nuevas via `launch_app` sí se registran.
 
 1. **Using `xdotool` on a Wayland-only session.** The script silently no-ops (`xdotool` is not installed) or returns nothing because the window is Wayland-native. Check `which xdotool` first; if it's missing, switch to KWin DBus or `kwin-mcp`.
 
